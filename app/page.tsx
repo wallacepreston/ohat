@@ -26,13 +26,13 @@ export default function Home() {
   return (
     <main className="container mx-auto py-10 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold mb-4">Office Hours Retrieval PoC</h1>
-        <p className="text-muted-foreground">Process instructor office hours from Salesforce data</p>
+        <h1 className="text-3xl font-bold mb-4">Campus Crawler AI</h1>
+        <p className="text-muted-foreground">Find office hours for professors</p>
       </div>
 
       <form action={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="salesforce-data">Salesforce Opportunity Data</Label>
+          <Label htmlFor="salesforce-data">Salesforce Data</Label>
           <Textarea
             id="salesforce-data"
             name="salesforceData"

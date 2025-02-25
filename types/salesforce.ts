@@ -44,6 +44,6 @@ export interface ProcessedOfficeHours {
   times: string
   location: string
   term: string
-  status: "pending" | "validated" | "error"
+  status: string
 }
 
