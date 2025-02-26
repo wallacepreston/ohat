@@ -62,7 +62,7 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
     - times: A string describing the times of office hours
     - location: Where office hours are held
     - term: The academic term for which the office hours are valid
-    - status: Either "pending", "validated", or "error"
+    - status: Either "not found", "validated", or "error"
     
     YOUR TASK:
     1. Search for this professor's office hours information for the current term.
@@ -71,12 +71,24 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
     4. Look for location information (building name, room number, "virtual", etc.)
 
     Only mark status as "validated" if you find SPECIFIC days, times, and locations.
-    Only mark as "pending" if you cannot find the information.
+    Only mark as "not found" if you cannot find the information.
     Mark as "error" if you see conflicting information.
     
     IMPORTANT: Your entire response must be valid JSON that can be parsed with JSON.parse(). Do not include any text outside of the JSON structure. Do not put the json in a code block.
     `
 
+    // uncomment to test error and prevent api call
+    // return {
+    //   instructor: context.instructor.Name,
+    //   email: context.instructor.Email,
+    //   institution: context.institution,
+    //   course: context.course,
+    //   days: [],
+    //   times: "",
+    //   location: "",
+    //   term: context.term,
+    //   status: "error"
+    // };
     // Call Perplexity API directly
     const response = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
@@ -125,7 +137,7 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
       result = officeHoursSchema.parse(result)
     } catch (error) {
       console.error("Error parsing response:", error)
-      // Create a pending result if parsing fails
+      // Create a not found result if parsing fails
       result = {
         instructor: context.instructor.Name,
         email: context.instructor.Email,
