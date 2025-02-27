@@ -28,19 +28,20 @@ export default function Home() {
     }
   }, [showSuccess])
 
-  async function handleSubmit(formData: FormData) {
-    console.log('Setting loading to true')
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     setLoading(true)
     try {
+      const formData = new FormData(e.currentTarget)
       const data = await processOfficeHours(formData)
       // Append new results instead of replacing
       setResults(prevResults => [...prevResults, ...(Array.isArray(data) ? data : [data])])
       setShowSuccess(true)
     } catch (error) {
       console.error("Error processing data:", error)
+    } finally {
+      setLoading(false)
     }
-    console.log('Setting loading to false')
-    setLoading(false)
   }
 
   return (
@@ -77,7 +78,7 @@ export default function Home() {
         <p className="text-muted-foreground">Find office hours for professors</p>
       </div>
 
-      <form action={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="salesforce-data">Salesforce Data</Label>
           <Textarea
