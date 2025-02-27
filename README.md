@@ -2,6 +2,8 @@
 
 An AI-powered tool that automates the retrieval of instructor office hours from the web, streamlining sales rep research and saving time.
 
+![Campus Crawler AI Screenshot](screenshot.png)
+
 ## Getting Started
 
 ### Credentials
@@ -29,4 +31,10 @@ curl https://get.volta.sh | bash
 
 `npm run dev`
 
+### Usage
+
 Visit `http://localhost:3000` to access the application.
+
+Copy the data from [the seed file](app/api/seed/faculty_schedule.json) and paste it into the `Salesforce Data` input field.
+
+Click `Submit` to see the results.
