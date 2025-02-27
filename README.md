@@ -15,6 +15,14 @@ SERPAPI_API_KEY=your_serpapi_api_key
 GOOGLE_API_KEY=your_google_api_key
 ```
 
+### Volta
+
+We use [Volta](https://volta.sh/) to manage our Node.js version.  It's not required, but it's recommended.
+
+```sh
+curl https://get.volta.sh | bash
+```
+
 ### Installation
 
 `npm install`
