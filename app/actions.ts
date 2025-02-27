@@ -21,8 +21,22 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
     const rawData = formData.get("salesforceData") as string
     const parsedData = JSON.parse(rawData)
     
-    // use Perplexity to search for office hours
-    return await searchWithPerplexity(parsedData)
+    // Handle array of objects
+    if (Array.isArray(parsedData)) {
+      console.log(`Processing array of ${parsedData.length} records`)
+      
+      // Process each item in parallel and combine results
+      const resultsPromises = parsedData.map(item => searchWithPerplexity(item))
+      const results = await Promise.all(resultsPromises)
+      
+      // Flatten the array of arrays into a single array
+      return results.flat()
+    } 
+    // Handle single object
+    else {
+      console.log('Processing single record')
+      return await searchWithPerplexity(parsedData)
+    }
   } catch (error) {
     console.error("Error processing office hours:", error)
     throw new Error("Failed to process office hours data")
@@ -227,8 +241,9 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
   }
 
   // Ensure these fields are never null in the final result
-  const processedResult = {
+  const processedResult: ProcessedOfficeHours = {
     ...result,
+    email: result.email || "", // Ensure email is always a string, never null
     days: result.days || [],
     times: result.times || "",
     location: result.location || "",

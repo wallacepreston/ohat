@@ -52,18 +52,22 @@ export default function Home() {
       const formData = new FormData(e.currentTarget)
       const data = await processOfficeHours(formData)
       
-      // Append new results instead of replacing
-      setResults(prevResults => [...prevResults, ...(Array.isArray(data) ? data : [data])])
+      // Data is guaranteed to be an array now
+      setResults(prevResults => [...prevResults, ...data])
       
-      // Check result status to determine what message to show
-      if (data.length > 0 && data[0].status === "validated") {
-        showStatus('success', 'Office hours data has been found and added.')
-      } else if (data.length > 0 && data[0].status === "not found") {
-        showStatus('warning', 'No office hours information could be found.')
-      } else if (data.length > 0 && data[0].status === "error") {
-        showStatus('error', 'Error processing office hours data.')
+      // Check results and show appropriate status
+      if (data.length === 0) {
+        showStatus('warning', 'No results were returned')
+      } else if (data.every(item => item.status === "validated")) {
+        showStatus('success', `Found office hours for ${data.length} instructor(s)`)
+      } else if (data.every(item => item.status === "not found")) {
+        showStatus('warning', 'Could not find office hours information')
+      } else if (data.some(item => item.status === "error")) {
+        showStatus('error', 'Error processing some office hours data')
       } else {
-        showStatus('info', 'Data was processed, but the status is unclear.')
+        // Mixed results
+        const validCount = data.filter(item => item.status === "validated").length
+        showStatus('info', `Found office hours for ${validCount} of ${data.length} instructor(s)`)
       }
     } catch (error) {
       console.error("Error processing data:", error)
