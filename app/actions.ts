@@ -12,6 +12,7 @@ const officeHoursSchema = z.object({
   days: z.array(z.string()).nullable().default([]),
   times: z.string().nullable().default(""),
   location: z.string().nullable().default(""),
+  teachingHours: z.string().nullable().default(""),
   term: z.string(),
   status: z.string(),
 })
@@ -107,6 +108,15 @@ function processDirectData(officeHoursData: SalesforceData): ProcessedOfficeHour
       officeHoursData.endAMPM
     ),
     location: officeHoursData.location || officeHoursData.contactOfficeLocation || "",
+    teachingHours: officeHoursData.type === "Teaching" ? 
+      formatTime(
+        officeHoursData.startHour,
+        officeHoursData.startMinute,
+        officeHoursData.startAMPM,
+        officeHoursData.endHour,
+        officeHoursData.endMinute,
+        officeHoursData.endAMPM
+      ) : "",
     term: formatTerm(officeHoursData.lastModifiedDate),
     status: officeHoursData.noHoursPosted === 1 ? "not found" : "validated"
   }
@@ -162,6 +172,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
   - days: An array of days of the week when office hours are held
   - times: A string describing the times of office hours
   - location: Where office hours are held
+  - teachingHours: A string describing when the instructor teaches their classes
   - term: The academic term for which the office hours are valid
   - status: Either "not found", "validated", or "error"
   
@@ -170,6 +181,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
   2. Look for days of the week (Monday, Tuesday, etc.)
   3. Look for specific times (like "2-4pm" or "14:00-16:00")
   4. Look for location information (building name, room number, "virtual", etc.)
+  5. ALSO search for and include the professor's teaching schedule (when they teach classes).
 
   Only mark status as "validated" if you find SPECIFIC days, times, and locations.
   Only mark as "not found" if you cannot find the information.
@@ -235,6 +247,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
       days: [],
       times: "",
       location: "",
+      teachingHours: "",
       term: currentTerm,
       status: "error"
     }
@@ -247,6 +260,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
     days: result.days || [],
     times: result.times || "",
     location: result.location || "",
+    teachingHours: result.teachingHours || "", // Handle null teaching hours
   }
 
   return [processedResult]

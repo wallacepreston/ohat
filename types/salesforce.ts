@@ -27,6 +27,7 @@ export interface ProcessedOfficeHours {
   days: string[]
   times: string
   location: string
+  teachingHours: string
   term: string
   status: string
 }

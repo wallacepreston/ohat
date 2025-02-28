@@ -175,7 +175,8 @@ export default function Home() {
               <TableHead>Course</TableHead>
               <TableHead>Term</TableHead>
               <TableHead>Days</TableHead>
-              <TableHead>Time</TableHead>
+              <TableHead>Office Hours</TableHead>
+              <TableHead>Teaching Hours</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
@@ -194,6 +195,7 @@ export default function Home() {
                 <TableCell>{result.term}</TableCell>
                 <TableCell>{result.days.join(", ")}</TableCell>
                 <TableCell>{result.times}</TableCell>
+                <TableCell>{result.teachingHours}</TableCell>
                 <TableCell>{result.location}</TableCell>
                 <TableCell>
                   <span
