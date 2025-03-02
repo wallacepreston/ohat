@@ -120,10 +120,27 @@ function processDirectData(officeHoursData: SalesforceData): ProcessedOfficeHour
       ) : "",
     teachingLocation: officeHoursData.type === "Teaching" ? officeHoursData.location || "" : "", // Use class location
     term: formatTerm(officeHoursData.lastModifiedDate),
-    status: officeHoursData.noHoursPosted === 1 ? "not found" : "validated"
+    status: processDirectDataStatus(officeHoursData)
   }
 
   return [processedResult]
+}
+
+// Add this function before it's used in processDirectData
+function processDirectDataStatus(data: SalesforceData): string {
+  const hasOfficeLocation = !!data.contactOfficeLocation;
+  const hasTeachingLocation = data.type === "Teaching" && !!data.location;
+  const hasHours = !!(data.startHour || data.startMinute);
+  
+  if (data.noHoursPosted === 1) {
+    return "not found";
+  } else if (!hasHours && !hasOfficeLocation && !hasTeachingLocation) {
+    return "not found";
+  } else if (data.type === "Teaching" && hasHours && hasTeachingLocation && hasOfficeLocation) {
+    return "validated";
+  } else {
+    return "partial info found";
+  }
 }
 
 // Use Perplexity to search for office hours
@@ -177,7 +194,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
   - teachingHours: A string describing when the instructor teaches their classes
   - teachingLocation: Where the professor TEACHES their classes (classroom, building, etc.)
   - term: The academic term for which the office hours are valid
-  - status: Either "not found", "validated", or "error"
+  - status: Either "not found", "validated", "partial info found", or "error"
   
   YOUR TASK:
   1. Search for this professor's office hours information for the current term.
@@ -187,8 +204,17 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
   5. ALSO search for the professor's teaching schedule (when they teach classes)
   6. Look for the LOCATION where classes are taught (classroom buildings, room numbers)
 
-  Only mark status as "validated" if you find SPECIFIC days, times, and locations.
-  Only mark as "not found" if you cannot find the information.
+  IMPORTANT FORMATTING INSTRUCTIONS:
+  - If there are multiple times and locations for either office hours or teaching, include the time with each location.
+    For example: "CDL room 110 (3:50-5:10 pm), CDL room 102 (5:40-7:00 pm)" instead of just "CDL room 110, CDL room 102"
+  - When there are both in-person and virtual locations, specify which days/times apply to each.
+    For example: "Room 102 (Wednesday 7:00-7:30 pm), Virtual via Zoom (Thursday and Sunday 8:00-9:00 pm)"
+  - Include day information along with times when different locations are used on different days
+  - Make sure to match each time/day with its corresponding location when listing multiple locations.
+
+  Only mark status as "validated" if you find SPECIFIC days, times, and locations for both office hours and teaching hours.
+  Mark as "partial info found" if you find some information (like office hours but not teaching hours, or times but not locations).
+  Only mark as "not found" if you cannot find ANY information about office hours or teaching.
   Mark as "error" if you see conflicting information.
   
   IMPORTANT: Your entire response must be valid JSON that can be parsed with JSON.parse(). Do not include any text outside of the JSON structure. Do not put the json in a code block.
@@ -258,15 +284,33 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
     }
   }
 
+  // Determine status based on available information
+  let status = result.status;
+  if (status !== "error") {
+    const hasOfficeHours = result.times && result.times.trim() !== "";
+    const hasOfficeLocation = result.location && result.location.trim() !== "";
+    const hasTeachingHours = result.teachingHours && result.teachingHours.trim() !== "";
+    const hasTeachingLocation = result.teachingLocation && result.teachingLocation.trim() !== "";
+    
+    if (!hasOfficeHours && !hasOfficeLocation && !hasTeachingHours && !hasTeachingLocation) {
+      status = "not found";
+    } else if (hasOfficeHours && hasOfficeLocation && hasTeachingHours && hasTeachingLocation) {
+      status = "validated";
+    } else {
+      status = "partial info found";
+    }
+  }
+
   // Ensure these fields are never null in the final result
   const processedResult: ProcessedOfficeHours = {
     ...result,
-    email: result.email || "", // Ensure email is always a string, never null
+    email: result.email || "",
     days: result.days || [],
     times: result.times || "",
     location: result.location || "",
     teachingHours: result.teachingHours || "",
-    teachingLocation: result.teachingLocation || "", // Handle null teaching location
+    teachingLocation: result.teachingLocation || "",
+    status: status
   }
 
   return [processedResult]

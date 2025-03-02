@@ -59,15 +59,19 @@ export default function Home() {
       if (data.length === 0) {
         showStatus('warning', 'No results were returned')
       } else if (data.every(item => item.status === "validated")) {
-        showStatus('success', `Found office hours for ${data.length} instructor(s)`)
+        showStatus('success', `Found complete information for ${data.length} instructor(s)`)
       } else if (data.every(item => item.status === "not found")) {
-        showStatus('warning', 'Could not find office hours information')
+        showStatus('warning', 'Could not find any information')
       } else if (data.some(item => item.status === "error")) {
         showStatus('error', 'Error processing some office hours data')
+      } else if (data.some(item => item.status === "partial info found")) {
+        // New conditional for partial information
+        const partialCount = data.filter(item => item.status === "partial info found").length
+        showStatus('info', `Found partial information for ${partialCount} instructor(s)`)
       } else {
         // Mixed results
         const validCount = data.filter(item => item.status === "validated").length
-        showStatus('info', `Found office hours for ${validCount} of ${data.length} instructor(s)`)
+        showStatus('info', `Found complete information for ${validCount} of ${data.length} instructor(s)`)
       }
     } catch (error) {
       console.error("Error processing data:", error)
@@ -206,7 +210,9 @@ export default function Home() {
                         ? "text-green-600"
                         : result.status === "not found"
                           ? "text-yellow-600"
-                          : "text-red-600"
+                          : result.status === "partial info found"
+                            ? "text-blue-600"
+                            : "text-red-600"
                     }
                   >
                     {result.status}
