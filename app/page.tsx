@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -24,6 +24,8 @@ export default function Home() {
     message: '', 
     visible: false 
   })
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Monitor loading state changes
   useEffect(() => {
@@ -45,11 +47,52 @@ export default function Home() {
     setStatus({ type, message, visible: true })
   }
 
+  // Add this function to handle photo selection
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setPhotoFile(e.target.files[0])
+    }
+  }
+  
+  // Function to clear the selected photo
+  const clearPhoto = () => {
+    setPhotoFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
+    
     try {
       const formData = new FormData(e.currentTarget)
+      
+      // Add photo to formData if one is selected
+      if (photoFile) {
+        formData.append("photo", photoFile)
+        
+        // Validate the JSON data if photo is present
+        const jsonData = formData.get("salesforceData") as string
+        let parsedData
+        
+        try {
+          parsedData = JSON.parse(jsonData)
+        } catch (error) {
+          showStatus('error', 'Invalid JSON data format')
+          setLoading(false)
+          return
+        }
+        
+        // Ensure we only have one instructor when using photo
+        if (Array.isArray(parsedData) && parsedData.length > 1) {
+          showStatus('error', 'Only one instructor allowed when uploading a photo')
+          setLoading(false)
+          return
+        }
+      }
+      
       const data = await processOfficeHours(formData)
       
       // Data is guaranteed to be an array now
@@ -153,6 +196,52 @@ export default function Home() {
             required
           />
         </div>
+        
+        {/* Photo upload section */}
+        <div className="space-y-2">
+          <Label htmlFor="photo-upload">Office Hours Photo (Optional)</Label>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              id="photo-upload"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
+            />
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Select Photo
+            </Button>
+            
+            {photoFile && (
+              <>
+                <span className="text-sm text-muted-foreground">
+                  {photoFile.name} ({Math.round(photoFile.size / 1024)} KB)
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearPhoto}
+                  className="h-8 w-8 p-0"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </Button>
+              </>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Upload a photo of office hours to analyze. When uploading a photo, only one instructor record is allowed.
+          </p>
+        </div>
+        
         <Button type="submit" disabled={loading}>
           {loading ? "Processing..." : "Process Data"}
         </Button>
