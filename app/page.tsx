@@ -296,15 +296,20 @@ export default function Home() {
                   <span
                     className={
                       result.status === "validated"
-                        ? "text-green-600"
-                        : result.status === "not found"
-                          ? "text-yellow-600"
-                          : result.status === "partial info found"
-                            ? "text-blue-600"
-                            : "text-red-600"
+                        ? "text-green-600 font-bold"
+                        : result.status === "found"
+                          ? "text-green-600"
+                          : result.status === "not found"
+                            ? "text-yellow-600"
+                            : result.status === "partial info found"
+                              ? "text-blue-600"
+                              : "text-red-600"
                     }
                   >
                     {result.status}
+                    {result.validatedBy && (
+                      <span className="ml-1 text-xs">✓</span>
+                    )}
                   </span>
                 </TableCell>
               </TableRow>

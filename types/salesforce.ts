@@ -31,5 +31,6 @@ export interface ProcessedOfficeHours {
   teachingLocation: string
   term: string
   status: string
+  validatedBy?: string | null
 }
 
