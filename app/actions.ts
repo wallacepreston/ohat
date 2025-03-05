@@ -13,6 +13,7 @@ const officeHoursSchema = z.object({
   times: z.string().nullable().default(""),
   location: z.string().nullable().default(""),
   teachingHours: z.string().nullable().default(""),
+  teachingLocation: z.string().nullable().default(""),
   term: z.string(),
   status: z.string(),
 })
@@ -107,7 +108,7 @@ function processDirectData(officeHoursData: SalesforceData): ProcessedOfficeHour
       officeHoursData.endMinute,
       officeHoursData.endAMPM
     ),
-    location: officeHoursData.location || officeHoursData.contactOfficeLocation || "",
+    location: officeHoursData.contactOfficeLocation || "", // Use office location
     teachingHours: officeHoursData.type === "Teaching" ? 
       formatTime(
         officeHoursData.startHour,
@@ -117,6 +118,7 @@ function processDirectData(officeHoursData: SalesforceData): ProcessedOfficeHour
         officeHoursData.endMinute,
         officeHoursData.endAMPM
       ) : "",
+    teachingLocation: officeHoursData.type === "Teaching" ? officeHoursData.location || "" : "", // Use class location
     term: formatTerm(officeHoursData.lastModifiedDate),
     status: officeHoursData.noHoursPosted === 1 ? "not found" : "validated"
   }
@@ -171,17 +173,19 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
   - course: The course name
   - days: An array of days of the week when office hours are held
   - times: A string describing the times of office hours
-  - location: Where office hours are held
+  - location: Where the professor holds their OFFICE HOURS (office number, building, etc.)
   - teachingHours: A string describing when the instructor teaches their classes
+  - teachingLocation: Where the professor TEACHES their classes (classroom, building, etc.)
   - term: The academic term for which the office hours are valid
   - status: Either "not found", "validated", or "error"
   
   YOUR TASK:
   1. Search for this professor's office hours information for the current term.
-  2. Look for days of the week (Monday, Tuesday, etc.)
-  3. Look for specific times (like "2-4pm" or "14:00-16:00")
-  4. Look for location information (building name, room number, "virtual", etc.)
-  5. ALSO search for and include the professor's teaching schedule (when they teach classes).
+  2. Look for days of the week for office hours (Monday, Tuesday, etc.)
+  3. Look for specific times of office hours (like "2-4pm" or "14:00-16:00")
+  4. Look for the LOCATION of office hours (office building, room number, "virtual", etc.)
+  5. ALSO search for the professor's teaching schedule (when they teach classes)
+  6. Look for the LOCATION where classes are taught (classroom buildings, room numbers)
 
   Only mark status as "validated" if you find SPECIFIC days, times, and locations.
   Only mark as "not found" if you cannot find the information.
@@ -248,6 +252,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
       times: "",
       location: "",
       teachingHours: "",
+      teachingLocation: "",
       term: currentTerm,
       status: "error"
     }
@@ -260,7 +265,8 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
     days: result.days || [],
     times: result.times || "",
     location: result.location || "",
-    teachingHours: result.teachingHours || "", // Handle null teaching hours
+    teachingHours: result.teachingHours || "",
+    teachingLocation: result.teachingLocation || "", // Handle null teaching location
   }
 
   return [processedResult]
