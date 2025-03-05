@@ -19,6 +19,14 @@ export interface SalesforceData {
   teachesExclusivelyOnline: number
 }
 
+export enum OfficeHoursStatus {
+  VALIDATED = 'VALIDATED',
+  FOUND = 'FOUND',
+  PARTIAL_INFO_FOUND = 'PARTIAL_INFO_FOUND',
+  NOT_FOUND = 'NOT_FOUND',
+  ERROR = 'ERROR'
+}
+
 export interface ProcessedOfficeHours {
   instructor: string
   email: string
@@ -30,7 +38,15 @@ export interface ProcessedOfficeHours {
   teachingHours: string
   teachingLocation: string
   term: string
-  status: string
+  status: OfficeHoursStatus
   validatedBy?: string | null
+}
+
+export function formatStatus(status: OfficeHoursStatus): string {
+  return status
+    .toLowerCase()
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 

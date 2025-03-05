@@ -2,6 +2,7 @@
 
 import { z } from "zod"
 import type { SalesforceData, ProcessedOfficeHours } from "@/types/salesforce"
+import { OfficeHoursStatus } from "@/types/salesforce"
 import { ChatOpenAI } from "@langchain/openai"
 import { HumanMessage, SystemMessage } from "@langchain/core/messages"
 import { StructuredOutputParser } from "langchain/output_parsers"
@@ -21,7 +22,17 @@ const officeHoursSchema = z.object({
   teachingHours: z.string().nullable().default(""),
   teachingLocation: z.string().nullable().default(""),
   term: z.string(),
-  status: z.string(),
+  status: z.string().transform(val => {
+    // Transform string status to enum
+    switch(val.toLowerCase()) {
+      case 'validated': return OfficeHoursStatus.VALIDATED;
+      case 'found': return OfficeHoursStatus.FOUND;
+      case 'partial info found': return OfficeHoursStatus.PARTIAL_INFO_FOUND;
+      case 'not found': return OfficeHoursStatus.NOT_FOUND;
+      case 'error': return OfficeHoursStatus.ERROR;
+      default: return OfficeHoursStatus.ERROR;
+    }
+  }),
 })
 
 // Update processOfficeHours to use the LangChain implementation
@@ -145,20 +156,20 @@ function processDirectData(officeHoursData: SalesforceData): ProcessedOfficeHour
   return [processedResult]
 }
 
-// Add this function before it's used in processDirectData
-function processDirectDataStatus(data: SalesforceData): string {
+// Update processDirectDataStatus function
+function processDirectDataStatus(data: SalesforceData): OfficeHoursStatus {
   const hasOfficeLocation = !!data.contactOfficeLocation;
   const hasTeachingLocation = data.type === "Teaching" && !!data.location;
   const hasHours = !!(data.startHour || data.startMinute);
   
   if (data.noHoursPosted === 1) {
-    return "not found";
+    return OfficeHoursStatus.NOT_FOUND;
   } else if (!hasHours && !hasOfficeLocation && !hasTeachingLocation) {
-    return "not found";
+    return OfficeHoursStatus.NOT_FOUND;
   } else if (data.type === "Teaching" && hasHours && hasTeachingLocation && hasOfficeLocation) {
-    return "validated";
+    return OfficeHoursStatus.VALIDATED;
   } else {
-    return "partial info found";
+    return OfficeHoursStatus.PARTIAL_INFO_FOUND;
   }
 }
 
@@ -299,24 +310,24 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
       teachingHours: "",
       teachingLocation: "",
       term: currentTerm,
-      status: "error"
+      status: OfficeHoursStatus.ERROR
     }
   }
 
   // Determine status based on available information
   let status = result.status;
-  if (status !== "error") {
+  if (status !== OfficeHoursStatus.ERROR) {
     const hasOfficeHours = result.times && result.times.trim() !== "";
     const hasOfficeLocation = result.location && result.location.trim() !== "";
     const hasTeachingHours = result.teachingHours && result.teachingHours.trim() !== "";
     const hasTeachingLocation = result.teachingLocation && result.teachingLocation.trim() !== "";
     
     if (!hasOfficeHours && !hasOfficeLocation && !hasTeachingHours && !hasTeachingLocation) {
-      status = "not found";
+      status = OfficeHoursStatus.NOT_FOUND;
     } else if (hasOfficeHours && hasOfficeLocation && hasTeachingHours && hasTeachingLocation) {
-      status = "validated";
+      status = OfficeHoursStatus.VALIDATED;
     } else {
-      status = "partial info found";
+      status = OfficeHoursStatus.PARTIAL_INFO_FOUND;
     }
   }
 
@@ -521,8 +532,8 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         const result = officeHoursSchema.parse(parsedJson)
         
         // IMPORTANT: Change "validated" to "found" - we'll only use "validated" after Exa confirms
-        if (result.status === "validated") {
-          result.status = "found";
+        if (result.status === OfficeHoursStatus.VALIDATED) {
+          result.status = OfficeHoursStatus.FOUND;
         }
         
         return result;
@@ -540,7 +551,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
           teachingHours: "",
           teachingLocation: "",
           term: currentTerm,
-          status: "error"
+          status: OfficeHoursStatus.ERROR
         }
       }
     }
@@ -555,7 +566,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
       console.log("Perplexity result status:", perplexityResult.status)
       
       // Skip validation if we don't have enough to validate
-      if (!perplexityResult.status.includes("found")) {
+      if (!perplexityResult.status.includes(OfficeHoursStatus.FOUND)) {
         console.log("Result status is not 'found', skipping Exa validation");
         return perplexityResult;
       }
@@ -631,7 +642,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
             
             // Update status if validation successful
             if (hasValidatingResults) {
-              validatedResult.status = "validated";
+              validatedResult.status = OfficeHoursStatus.VALIDATED;
               validatedResult.validatedBy = "Exa AI";
               console.log("Exa AI validation successful!");
               return validatedResult;
@@ -662,18 +673,18 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
       
       // Determine status based on available information, but preserve "validated" status from Exa AI
       let status = result.status;
-      if (status !== "error" && status !== "validated") {
+      if (status !== OfficeHoursStatus.ERROR && status !== OfficeHoursStatus.VALIDATED) {
         const hasOfficeHours = result.times && result.times.trim() !== "";
         const hasOfficeLocation = result.location && result.location.trim() !== "";
         const hasTeachingHours = result.teachingHours && result.teachingHours.trim() !== "";
         const hasTeachingLocation = result.teachingLocation && result.teachingLocation.trim() !== "";
         
         if (!hasOfficeHours && !hasOfficeLocation && !hasTeachingHours && !hasTeachingLocation) {
-          status = "not found";
+          status = OfficeHoursStatus.NOT_FOUND;
         } else if (hasOfficeHours && hasOfficeLocation && hasTeachingHours && hasTeachingLocation) {
-          status = "found"; // Use "found" instead of "validated" for Perplexity results
+          status = OfficeHoursStatus.FOUND; // Use "found" instead of "validated" for Perplexity results
         } else {
-          status = "partial info found";
+          status = OfficeHoursStatus.PARTIAL_INFO_FOUND;
         }
       }
       
@@ -711,7 +722,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
       teachingHours: "",
       teachingLocation: "",
       term: currentTerm,
-      status: "error"
+      status: OfficeHoursStatus.ERROR
     }]
   }
 }

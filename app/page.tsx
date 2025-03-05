@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { processOfficeHours } from "@/app/actions"
 import type { ProcessedOfficeHours } from "@/types/salesforce"
+import { OfficeHoursStatus, formatStatus } from "@/types/salesforce"
 
 // Define status types
 type StatusType = 'success' | 'error' | 'warning' | 'info' | null
@@ -101,19 +102,19 @@ export default function Home() {
       // Check results and show appropriate status
       if (data.length === 0) {
         showStatus('warning', 'No results were returned')
-      } else if (data.every(item => item.status === "validated")) {
+      } else if (data.every(item => item.status === OfficeHoursStatus.VALIDATED)) {
         showStatus('success', `Found complete information for ${data.length} instructor(s)`)
-      } else if (data.every(item => item.status === "not found")) {
+      } else if (data.every(item => item.status === OfficeHoursStatus.NOT_FOUND)) {
         showStatus('warning', 'Could not find any information')
-      } else if (data.some(item => item.status === "error")) {
+      } else if (data.some(item => item.status === OfficeHoursStatus.ERROR)) {
         showStatus('error', 'Error processing some office hours data')
-      } else if (data.some(item => item.status === "partial info found")) {
+      } else if (data.some(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND)) {
         // New conditional for partial information
-        const partialCount = data.filter(item => item.status === "partial info found").length
+        const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND).length
         showStatus('info', `Found partial information for ${partialCount} instructor(s)`)
       } else {
         // Mixed results
-        const validCount = data.filter(item => item.status === "validated").length
+        const validCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
         showStatus('info', `Found complete information for ${validCount} of ${data.length} instructor(s)`)
       }
     } catch (error) {
@@ -295,18 +296,18 @@ export default function Home() {
                 <TableCell>
                   <span
                     className={
-                      result.status === "validated"
+                      result.status === OfficeHoursStatus.VALIDATED
                         ? "text-green-600 font-bold"
-                        : result.status === "found"
+                        : result.status === OfficeHoursStatus.FOUND
                           ? "text-green-600"
-                          : result.status === "not found"
+                          : result.status === OfficeHoursStatus.NOT_FOUND
                             ? "text-yellow-600"
-                            : result.status === "partial info found"
+                            : result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND
                               ? "text-blue-600"
                               : "text-red-600"
                     }
                   >
-                    {result.status}
+                    {formatStatus(result.status)}
                     {result.validatedBy && (
                       <span className="ml-1 text-xs">✓</span>
                     )}
