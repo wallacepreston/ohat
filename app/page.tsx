@@ -11,41 +11,40 @@ import { OfficeHoursStatus, formatStatus } from "@/types/salesforce"
 
 // Define status types
 type StatusType = 'success' | 'error' | 'warning' | 'info' | null
-interface StatusState {
+interface StatusMessage {
   type: StatusType
   message: string
-  visible: boolean
+  id: number // Add an ID to uniquely identify each status message
 }
 
 export default function Home() {
   const [results, setResults] = useState<ProcessedOfficeHours[]>([])
   const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState<StatusState>({ 
-    type: null, 
-    message: '', 
-    visible: false 
-  })
+  const [statusMessages, setStatusMessages] = useState<StatusMessage[]>([])
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [nextStatusId, setNextStatusId] = useState(1) // For generating unique IDs
   
   // Monitor loading state changes
   useEffect(() => {
     console.log('Loading state changed:', loading)
   }, [loading])
 
-  // Handle status message display
-  useEffect(() => {
-    if (status.visible) {
-      const timer = setTimeout(() => {
-        setStatus(prev => ({ ...prev, visible: false }))
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [status.visible])
-
-  // Helper to show different status messages
-  const showStatus = (type: StatusType, message: string) => {
-    setStatus({ type, message, visible: true })
+  // Add a new status message
+  const addStatusMessage = (type: StatusType, message: string) => {
+    const newMessage = { type, message, id: nextStatusId }
+    setStatusMessages(prev => [...prev, newMessage])
+    setNextStatusId(prev => prev + 1)
+    
+    // Remove this message after timeout
+    setTimeout(() => {
+      setStatusMessages(prev => prev.filter(msg => msg.id !== newMessage.id))
+    }, 5000)
+  }
+  
+  // Clear all status messages
+  const clearStatusMessages = () => {
+    setStatusMessages([])
   }
 
   // Add this function to handle photo selection
@@ -66,6 +65,7 @@ export default function Home() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
+    clearStatusMessages() // Clear previous status messages
     
     try {
       const formData = new FormData(e.currentTarget)
@@ -81,14 +81,14 @@ export default function Home() {
         try {
           parsedData = JSON.parse(jsonData)
         } catch (error) {
-          showStatus('error', 'Invalid JSON data format')
+          addStatusMessage('error', 'Invalid JSON data format')
           setLoading(false)
           return
         }
         
         // Ensure we only have one instructor when using photo
         if (Array.isArray(parsedData) && parsedData.length > 1) {
-          showStatus('error', 'Only one instructor allowed when uploading a photo')
+          addStatusMessage('error', 'Only one instructor allowed when uploading a photo')
           setLoading(false)
           return
         }
@@ -99,27 +99,40 @@ export default function Home() {
       // Data is guaranteed to be an array now
       setResults(prevResults => [...prevResults, ...data])
       
-      // Check results and show appropriate status
+      // Calculate counts for each status type
+      const validatedCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
+      const foundCount = data.filter(item => item.status === OfficeHoursStatus.FOUND).length
+      const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND).length
+      const notFoundCount = data.filter(item => item.status === OfficeHoursStatus.NOT_FOUND).length
+      const errorCount = data.filter(item => item.status === OfficeHoursStatus.ERROR).length
+      
       if (data.length === 0) {
-        showStatus('warning', 'No results were returned')
-      } else if (data.every(item => item.status === OfficeHoursStatus.VALIDATED)) {
-        showStatus('success', `Found complete information for ${data.length} instructor(s)`)
-      } else if (data.every(item => item.status === OfficeHoursStatus.NOT_FOUND)) {
-        showStatus('warning', 'Could not find any information')
-      } else if (data.some(item => item.status === OfficeHoursStatus.ERROR)) {
-        showStatus('error', 'Error processing some office hours data')
-      } else if (data.some(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND)) {
-        // New conditional for partial information
-        const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND).length
-        showStatus('info', `Found partial information for ${partialCount} instructor(s)`)
+        addStatusMessage('warning', 'No results were returned')
       } else {
-        // Mixed results
-        const validCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
-        showStatus('info', `Found complete information for ${validCount} of ${data.length} instructor(s)`)
+        // Add a message for each status type with results
+        if (validatedCount > 0) {
+          addStatusMessage('success', `Validated ${validatedCount} instructor(s)`)
+        }
+        
+        if (foundCount > 0) {
+          addStatusMessage('success', `Found information for ${foundCount} instructor(s)`)
+        }
+        
+        if (partialCount > 0) {
+          addStatusMessage('info', `Found partial information for ${partialCount} instructor(s)`)
+        }
+        
+        if (notFoundCount > 0) {
+          addStatusMessage('warning', `Could not find information for ${notFoundCount} instructor(s)`)
+        }
+        
+        if (errorCount > 0) {
+          addStatusMessage('error', `Error processing ${errorCount} instructor(s)`)
+        }
       }
     } catch (error) {
       console.error("Error processing data:", error)
-      showStatus('error', error instanceof Error ? error.message : 'An unexpected error occurred')
+      addStatusMessage('error', error instanceof Error ? error.message : 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }
@@ -135,50 +148,56 @@ export default function Home() {
         </div>
       )}
 
-      {/* Unified Toast notification */}
-      <div className="fixed top-0 left-0 right-0 flex justify-center pointer-events-none z-50">
-        <div 
-          className={`
-            mt-4 px-6 py-3 rounded-lg shadow-lg
-            flex items-center gap-2 transition-all duration-300 max-w-md
-            ${status.visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10'}
-            ${status.type === 'success' ? 'bg-green-50 text-green-800' : ''}
-            ${status.type === 'error' ? 'bg-red-50 text-red-800' : ''}
-            ${status.type === 'warning' ? 'bg-yellow-50 text-yellow-800' : ''}
-            ${status.type === 'info' ? 'bg-blue-50 text-blue-800' : ''}
-          `}
-        >
-          {/* Icon based on status type */}
-          {status.type === 'success' && (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          )}
-          {status.type === 'error' && (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-          )}
-          {status.type === 'warning' && (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          )}
-          {status.type === 'info' && (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          )}
-          <div>
-            <div className="font-medium">
-              {status.type === 'success' && 'Success!'}
-              {status.type === 'error' && 'Error'}
-              {status.type === 'warning' && 'Warning'}
-              {status.type === 'info' && 'Information'}
+      {/* Status messages container */}
+      <div className="fixed top-0 left-0 right-0 flex flex-col items-center pointer-events-none z-50">
+        {statusMessages.map((statusMsg, index) => (
+          <div 
+            key={statusMsg.id}
+            className={`
+              mt-4 px-6 py-3 rounded-lg shadow-lg
+              flex items-center gap-2 transition-all duration-300 max-w-md
+              ${statusMsg.type === 'success' ? 'bg-green-50 text-green-800' : ''}
+              ${statusMsg.type === 'error' ? 'bg-red-50 text-red-800' : ''}
+              ${statusMsg.type === 'warning' ? 'bg-yellow-50 text-yellow-800' : ''}
+              ${statusMsg.type === 'info' ? 'bg-blue-50 text-blue-800' : ''}
+            `}
+            style={{ 
+              marginTop: `${index * 5 + 16}px`,  // Stack messages with spacing
+              zIndex: 100 - index               // Ensure proper layering
+            }}
+          >
+            {/* Icon based on status type */}
+            {statusMsg.type === 'success' && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            )}
+            {statusMsg.type === 'error' && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            )}
+            {statusMsg.type === 'warning' && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+            {statusMsg.type === 'info' && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+            <div>
+              <div className="font-medium">
+                {statusMsg.type === 'success' && 'Success'}
+                {statusMsg.type === 'error' && 'Error'}
+                {statusMsg.type === 'warning' && 'Warning'}
+                {statusMsg.type === 'info' && 'Information'}
+              </div>
+              <div className="text-sm">{statusMsg.message}</div>
             </div>
-            <div className="text-sm">{status.message}</div>
           </div>
-        </div>
+        ))}
       </div>
 
       <div>
@@ -282,7 +301,7 @@ export default function Home() {
                 <TableCell>
                   <div>
                     <div>{result.instructor}</div>
-                    <div className="text-sm text-muted-foreground">{result.email}</div>
+                    {result.email && <div className="text-sm text-muted-foreground">{result.email}</div>}
                   </div>
                 </TableCell>
                 <TableCell>{result.institution}</TableCell>
@@ -315,6 +334,13 @@ export default function Home() {
                 </TableCell>
               </TableRow>
             ))}
+            {results.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={10} className="text-center py-6 text-muted-foreground">
+                  No results found. Submit data to search for office hours.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
