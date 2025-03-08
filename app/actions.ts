@@ -11,24 +11,19 @@ import { StringOutputParser } from "@langchain/core/output_parsers"
 
 // Define the schema for raw Salesforce input data
 const salesforceDataSchema = z.object({
-  accountName: z.string().optional(),
-  contactLastName: z.string().optional(),
-  contactFirstName: z.string().optional(),
-  departmentName: z.string().optional(),
-  officeHoursType: z.string().optional(),
-  dayOfWeek: z.string().optional(),
-  location: z.string().optional(),
-  officeLocation: z.string().optional(),
-  lastActivityDate: z.string().optional(),
-  additionalNotes: z.string().optional(),
-  noHoursPosted: z.number().optional(),
-  teachesExclusivelyOnline: z.number().optional(),
-  
-  // Also allow the processed format fields for flexibility
-  instructor: z.string().optional(),
-  email: z.string().optional(),
-  institution: z.string().optional(),
-  course: z.string().optional(),
+  // Standard Salesforce fields
+  Account_ID__c: z.string().optional(),
+  Account_Name__c: z.string().optional(),
+  Additional_Notes__c: z.string().optional(),
+  Contact_Name__c: z.string().optional(),
+  Contact_Email__c: z.string().optional(),
+  Contact_Status__c: z.string().optional(),
+  Contact_Office_Phone__c: z.string().optional(),
+  Last_Activity_Date__c: z.string().optional(),
+  Office_Hours__c: z.string().optional(),
+  School_Course_Name__c: z.string().optional(),
+  Is_Teaching__c: z.boolean().optional(),
+  Division: z.string().optional(),
 })
 
 // Define the schema for structured output from AI processing
@@ -59,38 +54,63 @@ const officeHoursSchema = z.object({
 
 // Helper function to convert from Salesforce format to our internal format
 function convertSalesforceDataToInternal(data: any): any {
+  // Extract instructor name from Contact_Name__c
+  const instructor = data.Contact_Name__c || "Unknown Instructor";
+  
+  // Extract email from Contact_Email__c
+  const email = data.Contact_Email__c || "";
+  
+  // Extract institution from Account_Name__c
+  const institution = data.Account_Name__c || "Unknown Institution";
+  
+  // Extract course from School_Course_Name__c or Division
+  const course = data.School_Course_Name__c || data.Division || "Unknown Course";
+  
+  // Extract days from Office_Hours__c if available
+  let days: string[] = [];
+  if (data.Office_Hours__c) {
+    // Try to parse days from Office_Hours__c field
+    const officeHours = data.Office_Hours__c.toLowerCase();
+    const possibleDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const foundDays = possibleDays.filter(day => officeHours.includes(day));
+    if (foundDays.length > 0) {
+      days = foundDays.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+    }
+  }
+  
+  // Initialize other fields
+  const times = "";
+  const location = "";
+  const teachingHours = "";
+  const teachingLocation = "";
+  
+  // Determine term
+  const term = getCurrentSeason() + " " + new Date().getFullYear();
+  
+  // Determine status
+  const status = determineInitialStatus(data);
+  
   return {
-    instructor: data.instructor || 
-                (data.contactFirstName && data.contactLastName ? 
-                 `${data.contactFirstName} ${data.contactLastName}` : 
-                 "Unknown Instructor"),
-    email: data.email || "",
-    institution: data.institution || 
-                 data.accountName || 
-                 "Unknown Institution",
-    course: data.course || 
-            data.departmentName || 
-            "Unknown Course",
-    days: data.days || (data.dayOfWeek ? [data.dayOfWeek] : []),
-    times: data.times || "",
-    location: data.location || data.officeLocation || "",
-    teachingHours: data.teachingHours || "",
-    teachingLocation: data.teachingLocation || "",
-    term: data.term || getCurrentSeason() + " " + new Date().getFullYear(),
-    status: data.status || determineInitialStatus(data)
+    instructor,
+    email,
+    institution,
+    course,
+    days,
+    times,
+    location,
+    teachingHours,
+    teachingLocation,
+    term,
+    status
   };
 }
 
 // Determine initial status based on available data in Salesforce format
 function determineInitialStatus(data: any): OfficeHoursStatus {
-  const hasOfficeHours = data.officeHoursType || data.dayOfWeek;
-  const hasLocation = data.location || data.officeLocation;
+  const hasOfficeHours = data.Office_Hours__c !== undefined && data.Office_Hours__c !== null;
   
-  if (data.noHoursPosted === 1) {
-    return OfficeHoursStatus.NOT_FOUND;
-  } else if (hasOfficeHours && hasLocation) {
-    return OfficeHoursStatus.FOUND;
-  } else if (hasOfficeHours || hasLocation) {
+  // If we have Office_Hours__c, consider it partial info found
+  if (hasOfficeHours) {
     return OfficeHoursStatus.PARTIAL_INFO_FOUND;
   } else {
     return OfficeHoursStatus.NOT_FOUND;
@@ -258,17 +278,10 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
   } catch (error) {
     console.error("Error in searchWithPerplexity:", error);
     return [{
-      instructor: searchData.instructor || 
-                  (searchData.contactFirstName && searchData.contactLastName ? 
-                  `${searchData.contactFirstName} ${searchData.contactLastName}` : 
-                  "Unknown Instructor"),
-      email: "",
-      institution: searchData.institution || 
-                   searchData.accountName || 
-                   "Unknown Institution",
-      course: searchData.course || 
-              searchData.departmentName || 
-              "Unknown Course",
+      instructor: searchData.Contact_Name__c || "Unknown Instructor",
+      email: searchData.Contact_Email__c || "",
+      institution: searchData.Account_Name__c || "Unknown Institution",
+      course: searchData.School_Course_Name__c || searchData.Division || "Unknown Course",
       days: [],
       times: "",
       location: "",
@@ -622,7 +635,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
               const validatedResult = { ...perplexityResult };
               
               // Check if at least one result validates or enhances our information
-              const hasValidatingResults = data.results.some(result => {
+              const hasValidatingResults = data.results.some((result: { text: string, title: string }) => {
                 const text = result.text || "";
                 const title = result.title || "";
                 
@@ -723,17 +736,10 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
   } catch (error) {
     console.error("Error in processPhotoWithLangChain:", error)
     return [{
-      instructor: searchData.instructor || 
-                  (searchData.contactFirstName && searchData.contactLastName ? 
-                  `${searchData.contactFirstName} ${searchData.contactLastName}` : 
-                  "Unknown Instructor"),
-      email: "",
-      institution: searchData.institution || 
-                   searchData.accountName || 
-                   "Unknown Institution",
-      course: searchData.course || 
-              searchData.departmentName || 
-              "Unknown Course",
+      instructor: searchData.Contact_Name__c || "Unknown Instructor",
+      email: searchData.Contact_Email__c || "",
+      institution: searchData.Account_Name__c || "Unknown Institution",
+      course: searchData.School_Course_Name__c || searchData.Division || "Unknown Course",
       days: [],
       times: "",
       location: "",
