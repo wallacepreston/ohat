@@ -1,10 +1,14 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
+import { StatusProvider } from './context/StatusContext'
+import { Toaster } from '@/components/ui/toaster'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Campus Crawler AI - Find office hours for professors',
-  description: 'Campus Crawler AI - Find office hours for professors',
-  generator: 'Preston Wallace',
+  title: 'Campus Crawler AI',
+  description: 'Find office hours for professors',
 }
 
 export default function RootLayout({
@@ -14,7 +18,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.className}>
+        <StatusProvider>
+          <Toaster />
+          {children}
+        </StatusProvider>
+      </body>
     </html>
   )
 }
