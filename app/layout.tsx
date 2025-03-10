@@ -1,8 +1,10 @@
+import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import './globals.css'
 import { StatusProvider } from './context/StatusContext'
+import { LoadingProvider } from './context/LoadingContext'
 import { Toaster } from '@/components/ui/toaster'
+import LoadingOverlay from './components/LoadingOverlay'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -13,15 +15,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en">
       <body className={inter.className}>
         <StatusProvider>
-          <Toaster />
-          {children}
+          <LoadingProvider>
+            {children}
+            <Toaster />
+            <LoadingOverlay />
+          </LoadingProvider>
         </StatusProvider>
       </body>
     </html>

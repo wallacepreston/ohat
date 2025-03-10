@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -9,19 +9,15 @@ import { processOfficeHours } from "@/app/actions"
 import type { ProcessedOfficeHours } from "@/types/salesforce"
 import { OfficeHoursStatus, formatStatus } from "@/types/salesforce"
 import { useStatus } from "./context/StatusContext"
+import { useLoading } from "./context/LoadingContext"
 
 export default function Home() {
   const [results, setResults] = useState<ProcessedOfficeHours[]>([])
-  const [loading, setLoading] = useState(false)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { addStatusMessage, clearStatusMessages } = useStatus()
+  const { isLoading, setLoading, setLoadingMessage } = useLoading()
   
-  // Monitor loading state changes
-  useEffect(() => {
-    console.log('Loading state changed:', loading)
-  }, [loading])
-
   // Add this function to handle photo selection
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -40,6 +36,7 @@ export default function Home() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
+    setLoadingMessage("Searching for data...")
     clearStatusMessages() // Clear previous status messages
     
     try {
@@ -115,14 +112,6 @@ export default function Home() {
 
   return (
     <main className="container mx-auto py-10 space-y-8 relative">
-      {/* Loading overlay */}
-      {loading && (
-        <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-          <p className="text-white text-lg font-medium">Searching for data...</p>
-        </div>
-      )}
-
       <div>
         <h1 className="text-3xl font-bold mb-4">Campus Crawler AI</h1>
         <p className="text-muted-foreground">Find office hours for professors</p>
@@ -185,8 +174,8 @@ export default function Home() {
           </p>
         </div>
         
-        <Button type="submit" disabled={loading}>
-          {loading ? "Processing..." : "Process Data"}
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Processing..." : "Process Data"}
         </Button>
       </form>
 
