@@ -239,6 +239,61 @@ const perplexityValidationChain = new RunnableLambda({
   func: validateWithExaAI
 });
 
+// Process multiple instructors with Perplexity and validate with Exa AI
+async function processMultipleWithPerplexity(instructorDataArray: any[]): Promise<ProcessedOfficeHours[]> {
+  console.log(`Processing ${instructorDataArray.length} instructors with Perplexity and validating with Exa AI`)
+  
+  try {
+    // Process each item in parallel
+    const resultsPromises = instructorDataArray.map(async (item) => {
+      // Get initial results from Perplexity search
+      const perplexityResults = await searchWithPerplexity(item)
+      
+      // Validate each result with Exa AI if it has found or partial information
+      const validatedResults = await Promise.all(
+        perplexityResults.map(async (result) => {
+          try {
+            // Only validate if we have found or partial results
+            if (result.status === OfficeHoursStatus.FOUND || 
+                result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
+              console.log(`Validating result for ${result.instructor} with Exa AI...`)
+              return await perplexityValidationChain.invoke(result)
+            } else {
+              return result // Return unchanged if not eligible for validation
+            }
+          } catch (error) {
+            console.error(`Error validating result for ${result.instructor}:`, error)
+            return result // Return original result if validation fails
+          }
+        })
+      )
+      
+      return validatedResults
+    })
+    
+    // Wait for all results and flatten the array of arrays into a single array
+    const results = await Promise.all(resultsPromises)
+    return results.flat()
+  } catch (error) {
+    console.error("Error in processMultipleWithPerplexity:", error)
+    
+    // Return basic error results for each instructor
+    return instructorDataArray.map(data => ({
+      instructor: data.Contact_Name__c || "Unknown Instructor",
+      email: data.Contact_Email__c || "",
+      institution: data.Account_Name__c || "Unknown Institution",
+      course: data.School_Course_Name__c || data.Division || "Unknown Course",
+      days: [],
+      times: "",
+      location: "",
+      teachingHours: "",
+      teachingLocation: "",
+      term: getCurrentSeason() + " " + new Date().getFullYear(),
+      status: OfficeHoursStatus.ERROR
+    }));
+  }
+}
+
 // Update processOfficeHours to use the LangChain implementation
 export async function processOfficeHours(formData: FormData): Promise<ProcessedOfficeHours[]> {
   try {
@@ -256,36 +311,8 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
       if (photo && parsedData.length > 0) {
         return await processPhotoWithLangChain(parsedData[0], photo)
       } else {
-        // Process each item in parallel
-        const resultsPromises = parsedData.map(async (item) => {
-          // Get initial results from Perplexity search
-          const perplexityResults = await searchWithPerplexity(item)
-          
-          // Validate each result with Exa AI if it has found or partial information
-          const validatedResults = await Promise.all(
-            perplexityResults.map(async (result) => {
-              try {
-                // Only validate if we have found or partial results
-                if (result.status === OfficeHoursStatus.FOUND || 
-                    result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
-                  console.log(`Validating result for ${result.instructor} with Exa AI...`)
-                  return await perplexityValidationChain.invoke(result)
-                } else {
-                  return result // Return unchanged if not eligible for validation
-                }
-              } catch (error) {
-                console.error(`Error validating result for ${result.instructor}:`, error)
-                return result // Return original result if validation fails
-              }
-            })
-          )
-          
-          return validatedResults
-        })
-        
-        // Wait for all results and flatten the array of arrays into a single array
-        const results = await Promise.all(resultsPromises)
-        return results.flat()
+        // Process all records using the dedicated function
+        return await processMultipleWithPerplexity(parsedData)
       }
     } 
     // Handle single object
@@ -294,29 +321,8 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
       if (photo) {
         return await processPhotoWithLangChain(parsedData, photo)
       } else {
-        // Get initial results from Perplexity search
-        const perplexityResults = await searchWithPerplexity(parsedData)
-        
-        // Validate each result with Exa AI if it has found or partial information
-        const validatedResults = await Promise.all(
-          perplexityResults.map(async (result) => {
-            try {
-              // Only validate if we have found or partial results
-              if (result.status === OfficeHoursStatus.FOUND || 
-                  result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
-                console.log(`Validating result for ${result.instructor} with Exa AI...`)
-                return await perplexityValidationChain.invoke(result)
-              } else {
-                return result // Return unchanged if not eligible for validation
-              }
-            } catch (error) {
-              console.error(`Error validating result for ${result.instructor}:`, error)
-              return result // Return original result if validation fails
-            }
-          })
-        )
-        
-        return validatedResults
+        // Process the single record as an array of one
+        return await processMultipleWithPerplexity([parsedData])
       }
     }
   } catch (error) {
@@ -536,8 +542,6 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
     // Extract key information for the search
     const instructor = convertedData.instructor;
     const institution = convertedData.institution;
-    const course = convertedData.course;
-    const currentTerm = convertedData.term;
 
     // Convert photo to base64
     const photoBytes = await photo.arrayBuffer()
@@ -549,9 +553,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
     
     Context:
     Institution: ${institution}
-    Course: ${course}
     Instructor: ${instructor}
-    Term: ${currentTerm}
     
     Extract all visible information about:
     1. Days and times of office hours
@@ -641,9 +643,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         
         Context:
         Institution: ${institution}
-        Course: ${course}
         Instructor: ${instructor}
-        Term: ${currentTerm}
         
         I also have a photo with information about this professor's office hours. Here's what was found in the photo:
         
@@ -710,13 +710,11 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
             instructor: instructor,
             email: "",
             institution: institution,
-            course: course,
             days: [],
             times: "",
             location: "",
             teachingHours: "",
             teachingLocation: "",
-            term: currentTerm,
             status: OfficeHoursStatus.ERROR
           }
         }
@@ -776,14 +774,14 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         instructor: instructor,
         email: "",
         institution: institution,
-        course: course,
         days: [],
         times: "",
         location: "",
         teachingHours: "",
         teachingLocation: "",
-        term: currentTerm,
-        status: OfficeHoursStatus.ERROR
+        status: OfficeHoursStatus.ERROR,
+        course: "",
+        term: ""
       }]
     }
   } catch (error) {
