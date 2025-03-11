@@ -127,6 +127,118 @@ function getCurrentSeason(): string {
   return "Winter"; // Dec (11), Jan (0), Feb (1)
 }
 
+// Create a reusable function for Exa AI validation that both chains can use
+const validateWithExaAI = async (result: ProcessedOfficeHours): Promise<ProcessedOfficeHours> => {
+  console.log("Starting Exa AI validation...")
+  console.log("Result to validate:", result)
+  console.log("Result status:", result.status)
+  
+  // Skip validation if we don't have enough to validate
+  if (result.status !== OfficeHoursStatus.FOUND && result.status !== OfficeHoursStatus.PARTIAL_INFO_FOUND) {
+    console.log(`Result status is '${result.status}', skipping Exa validation`);
+    return result;
+  }
+  
+  // Create a prompt for Exa AI to validate or enhance the results
+  const exaPrompt = `
+  Find accurate information about this professor's office hours and teaching schedule to validate:
+  
+  Professor ${result.instructor} at ${result.institution}
+  Teaching ${result.course} during ${result.term}
+  
+  According to our information:
+  - Office Hours: ${result.days.join(", ")} at ${result.times}
+  - Office Location: ${result.location}
+  - Teaching Hours: ${result.teachingHours}
+  - Teaching Location: ${result.teachingLocation}
+  
+  Find and check this information from official university websites or faculty directories.
+  `
+  
+  try {
+    // Call Exa AI API
+    console.log("Calling Exa AI API...")
+    const response = await fetch("https://api.exa.ai/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.EXA_API_KEY}`
+      },
+      body: JSON.stringify({
+        query: exaPrompt,
+        numResults: 5,
+        useAutoprompt: true
+      })
+    })
+    
+    // Get the full response body even if there was an error
+    const responseText = await response.text();
+    console.log("Exa API status:", response.status, response.statusText);
+    
+    if (!response.ok) {
+      console.error("Exa AI API error details:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: responseText
+      });
+      throw new Error(`Exa AI API error: ${response.status} ${response.statusText} - ${responseText.substring(0, 200)}...`);
+    }
+    
+    // If we got here, the response was successful
+    try {
+      const data = JSON.parse(responseText);
+      console.log("Exa AI search results count:", data.results?.length || 0);
+      
+      // Process the Exa results and determine if we should validate
+      if (data.results && data.results.length > 0) {
+        // Create an enhanced copy of the result
+        const validatedResult = { ...result };
+        
+        // Check if at least one result validates or enhances our information
+        const hasValidatingResults = data.results.some((result: { text: string, title: string }) => {
+          const text = result.text || "";
+          const title = result.title || "";
+          
+          // Check if this result confirms our information
+          const hasInstructorName = text.includes(validatedResult.instructor);
+          const hasOfficeHours = validatedResult.days.some(day => text.includes(day)) ||
+                                text.includes(validatedResult.times);
+          const hasLocation = text.includes(validatedResult.location);
+          
+          return hasInstructorName && (hasOfficeHours || hasLocation);
+        });
+        
+        // Update status if validation successful
+        if (hasValidatingResults) {
+          validatedResult.status = OfficeHoursStatus.VALIDATED;
+          validatedResult.validatedBy = "Exa AI";
+          console.log("Exa AI validation successful!");
+          return validatedResult;
+        }
+      }
+      
+      console.log("Exa AI validation inconclusive");
+      return result;
+    } catch (parseError) {
+      console.error("Error parsing Exa response JSON:", parseError);
+      return result;
+    }
+  } catch (fetchError) {
+    console.error("Error fetching from Exa AI:", fetchError);
+    return result;
+  }
+};
+
+// Create a validation chain for photo processing results
+const photoValidationChain = new RunnableLambda({
+  func: validateWithExaAI
+});
+
+// Create a validation chain for Perplexity search results  
+const perplexityValidationChain = new RunnableLambda({
+  func: validateWithExaAI
+});
+
 // Update processOfficeHours to use the LangChain implementation
 export async function processOfficeHours(formData: FormData): Promise<ProcessedOfficeHours[]> {
   try {
@@ -144,11 +256,35 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
       if (photo && parsedData.length > 0) {
         return await processPhotoWithLangChain(parsedData[0], photo)
       } else {
-        // Process each item in parallel and combine results
-        const resultsPromises = parsedData.map(item => searchWithPerplexity(item))
-        const results = await Promise.all(resultsPromises)
+        // Process each item in parallel
+        const resultsPromises = parsedData.map(async (item) => {
+          // Get initial results from Perplexity search
+          const perplexityResults = await searchWithPerplexity(item)
+          
+          // Validate each result with Exa AI if it has found or partial information
+          const validatedResults = await Promise.all(
+            perplexityResults.map(async (result) => {
+              try {
+                // Only validate if we have found or partial results
+                if (result.status === OfficeHoursStatus.FOUND || 
+                    result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
+                  console.log(`Validating result for ${result.instructor} with Exa AI...`)
+                  return await perplexityValidationChain.invoke(result)
+                } else {
+                  return result // Return unchanged if not eligible for validation
+                }
+              } catch (error) {
+                console.error(`Error validating result for ${result.instructor}:`, error)
+                return result // Return original result if validation fails
+              }
+            })
+          )
+          
+          return validatedResults
+        })
         
-        // Flatten the array of arrays into a single array
+        // Wait for all results and flatten the array of arrays into a single array
+        const results = await Promise.all(resultsPromises)
         return results.flat()
       }
     } 
@@ -158,7 +294,29 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
       if (photo) {
         return await processPhotoWithLangChain(parsedData, photo)
       } else {
-        return await searchWithPerplexity(parsedData)
+        // Get initial results from Perplexity search
+        const perplexityResults = await searchWithPerplexity(parsedData)
+        
+        // Validate each result with Exa AI if it has found or partial information
+        const validatedResults = await Promise.all(
+          perplexityResults.map(async (result) => {
+            try {
+              // Only validate if we have found or partial results
+              if (result.status === OfficeHoursStatus.FOUND || 
+                  result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
+                console.log(`Validating result for ${result.instructor} with Exa AI...`)
+                return await perplexityValidationChain.invoke(result)
+              } else {
+                return result // Return unchanged if not eligible for validation
+              }
+            } catch (error) {
+              console.error(`Error validating result for ${result.instructor}:`, error)
+              return result // Return original result if validation fails
+            }
+          })
+        )
+        
+        return validatedResults
       }
     }
   } catch (error) {
@@ -191,7 +349,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
     
     // Create the prompt
     const prompt = createPerplexityPrompt(instructor, institution, course, currentTerm);
-    
+
     // Call Perplexity API directly
     const response = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
@@ -565,116 +723,11 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
       }
     ])
     
-    // Step 6: Create the Exa AI validation chain with improved error logging
-    const exaAIValidationChain = new RunnableLambda({
-      func: async (perplexityResult: ProcessedOfficeHours) => {
-        console.log("Starting Exa AI validation...")
-
-        console.log("Perplexity result:", perplexityResult)
-        console.log("Perplexity result status:", perplexityResult.status)
-        
-        // Skip validation if we don't have enough to validate
-        if (!perplexityResult.status.includes(OfficeHoursStatus.FOUND)) {
-          console.log("Result status is not 'found', skipping Exa validation");
-          return perplexityResult;
-        }
-        
-        // Create a prompt for Exa AI to validate or enhance the results
-        const exaPrompt = `
-        Find accurate information about this professor's office hours and teaching schedule to validate:
-        
-        Professor ${perplexityResult.instructor} at ${perplexityResult.institution}
-        Teaching ${perplexityResult.course} during ${perplexityResult.term}
-        
-        According to our information:
-        - Office Hours: ${perplexityResult.days.join(", ")} at ${perplexityResult.times}
-        - Office Location: ${perplexityResult.location}
-        - Teaching Hours: ${perplexityResult.teachingHours}
-        - Teaching Location: ${perplexityResult.teachingLocation}
-        
-        Find and check this information from official university websites or faculty directories.
-        `
-        
-        try {
-          // Call Exa AI API
-          console.log("Calling Exa AI API...")
-          const response = await fetch("https://api.exa.ai/search", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${process.env.EXA_API_KEY}`
-            },
-            body: JSON.stringify({
-              query: exaPrompt,
-              numResults: 5,
-              useAutoprompt: true
-            })
-          })
-          
-          // Get the full response body even if there was an error
-          const responseText = await response.text();
-          console.log("Exa API status:", response.status, response.statusText);
-          
-          if (!response.ok) {
-            console.error("Exa AI API error details:", {
-              status: response.status,
-              statusText: response.statusText,
-              body: responseText
-            });
-            throw new Error(`Exa AI API error: ${response.status} ${response.statusText} - ${responseText.substring(0, 200)}...`);
-          }
-          
-          // If we got here, the response was successful
-          try {
-            const data = JSON.parse(responseText);
-            console.log("Exa AI search results count:", data.results?.length || 0);
-            
-            // Process the Exa results and determine if we should validate
-            if (data.results && data.results.length > 0) {
-              // Create an enhanced copy of the result
-              const validatedResult = { ...perplexityResult };
-              
-              // Check if at least one result validates or enhances our information
-              const hasValidatingResults = data.results.some((result: { text: string, title: string }) => {
-                const text = result.text || "";
-                const title = result.title || "";
-                
-                // Check if this result confirms our information
-                const hasInstructorName = text.includes(perplexityResult.instructor);
-                const hasOfficeHours = perplexityResult.days.some(day => text.includes(day)) ||
-                                       text.includes(perplexityResult.times);
-                const hasLocation = text.includes(perplexityResult.location);
-                
-                return hasInstructorName && (hasOfficeHours || hasLocation);
-              });
-              
-              // Update status if validation successful
-              if (hasValidatingResults) {
-                validatedResult.status = OfficeHoursStatus.VALIDATED;
-                validatedResult.validatedBy = "Exa AI";
-                console.log("Exa AI validation successful!");
-                return validatedResult;
-              }
-            }
-            
-            console.log("Exa AI validation inconclusive");
-            return perplexityResult;
-          } catch (parseError) {
-            console.error("Error parsing Exa response JSON:", parseError);
-            return perplexityResult;
-          }
-        } catch (fetchError) {
-          console.error("Error fetching from Exa AI:", fetchError);
-          return perplexityResult;
-        }
-      }
-    })
-    
-    // Step 7: Create the final chain
+    // Step 6: Create the final chain
     const finalChain = RunnableSequence.from([
       imageAnalysisChain,
       combinedSearchChain,
-      exaAIValidationChain,
+      photoValidationChain,
       // Final processing
       (result: any) => {
         console.log("Processing final result")
@@ -707,8 +760,8 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
           teachingLocation: result.teachingLocation || "",
           status: status,
           validatedBy: result.validatedBy || null
-        }
-        
+        };
+
         return [processedResult]
       }
     ])
