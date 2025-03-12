@@ -182,11 +182,6 @@ export default function UploadPage() {
               </div>
             )}
           </div>
-          {photoInputDirty && !photoFile && (
-            <p className="text-sm text-amber-600 font-medium">
-              Please upload a photo to analyze
-            </p>
-          )}
           <p className="text-sm text-muted-foreground">
             Upload a photo of office hours to analyze. This should be a photo of a syllabus, door, or website.
           </p>
