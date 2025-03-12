@@ -259,6 +259,7 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
           console.log(`Queueing crawl for instructor with no office hours: ${item.Contact_Name__c}`)
           await queueInstructorCrawl(
             item.Account_ID__c || item.Contact_Name__c, 
+            item.Contact_Name__c,
             item.Contact_Email__c,
             item.Account_Name__c || "Unknown Institution"
           )
@@ -330,11 +331,12 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
         
         // Queue SQS message if photo processing didn't find office hours
         if (results.length > 0 && 
-            results[0].status === OfficeHoursStatus.NOT_FOUND && 
+            results[0].status === 'NOT_FOUND' && 
             parsedData[0].Contact_Email__c) {
           console.log(`Queueing crawl for instructor with no office hours found in photo: ${results[0].instructor}`)
           await queueInstructorCrawl(
             parsedData[0].Account_ID__c || results[0].instructor, 
+            results[0].instructor,
             parsedData[0].Contact_Email__c,
             results[0].institution
           )
@@ -354,11 +356,12 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
         
         // Queue SQS message if photo processing didn't find office hours
         if (results.length > 0 && 
-            results[0].status === OfficeHoursStatus.NOT_FOUND && 
+            results[0].status === 'NOT_FOUND' && 
             parsedData.Contact_Email__c) {
           console.log(`Queueing crawl for instructor with no office hours found in photo: ${results[0].instructor}`)
           await queueInstructorCrawl(
             parsedData.Account_ID__c || results[0].instructor, 
+            results[0].instructor,
             parsedData.Contact_Email__c,
             results[0].institution
           )
