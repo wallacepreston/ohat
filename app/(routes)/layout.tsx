@@ -8,15 +8,17 @@ export default function RouteLayout({
   children: React.ReactNode
 }) {
   return (
-    <main className="container mx-auto py-10 space-y-6 relative">
-      <div>
-        <h1 className="text-3xl font-bold mb-4">Campus Crawler AI</h1>
+    <main className="container mx-auto px-4 sm:px-6 py-8 space-y-6 relative max-w-6xl">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Campus Crawler AI</h1>
         <p className="text-muted-foreground">Find office hours for professors</p>
       </div>
       
       <TabNavigation />
       
-      {children}
+      <div className="mt-4">
+        {children}
+      </div>
     </main>
   )
 } 

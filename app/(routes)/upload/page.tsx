@@ -137,13 +137,13 @@ export default function UploadPage() {
 
   return (
     <div className="space-y-8">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="photo-upload" className="flex items-center">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-3">
+          <Label htmlFor="photo-upload" className="flex items-center text-base">
             Office Hours Photo
             <span className="text-red-500 ml-1">*</span>
           </Label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <input
               type="file"
               id="photo-upload"
@@ -157,13 +157,14 @@ export default function UploadPage() {
               type="button" 
               variant={photoFile ? "outline" : "default"}
               onClick={handlePhotoButtonClick}
+              className="min-w-32"
             >
               {photoFile ? "Change Photo" : "Select Photo"}
             </Button>
             
             {photoFile && (
-              <>
-                <span className="text-sm text-muted-foreground">
+              <div className="flex items-center flex-wrap gap-2">
+                <span className="text-sm text-muted-foreground break-all">
                   {photoFile.name} ({Math.round(photoFile.size / 1024)} KB)
                 </span>
                 <Button
@@ -171,24 +172,29 @@ export default function UploadPage() {
                   variant="ghost"
                   size="sm"
                   onClick={clearPhoto}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8 p-0 flex-shrink-0"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
                 </Button>
-              </>
+              </div>
             )}
           </div>
+          {photoInputDirty && !photoFile && (
+            <p className="text-sm text-amber-600 font-medium">
+              Please upload a photo to analyze
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
             Upload a photo of office hours to analyze. This should be a photo of a syllabus, door, or website.
           </p>
         </div>
         
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="institution" className="flex items-center">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-3">
+            <Label htmlFor="institution" className="flex items-center text-base">
               Institution
               <span className="text-red-500 ml-1">*</span>
             </Label>
@@ -198,11 +204,12 @@ export default function UploadPage() {
               onChange={(e) => setInstitution(e.target.value)}
               placeholder="Enter institution name"
               required
+              className="w-full"
             />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="instructor-name" className="flex items-center">
+          <div className="space-y-3">
+            <Label htmlFor="instructor-name" className="flex items-center text-base">
               Instructor Name
               <span className="text-red-500 ml-1">*</span>
             </Label>
@@ -212,6 +219,7 @@ export default function UploadPage() {
               onChange={(e) => setInstructorName(e.target.value)}
               placeholder="Enter instructor name"
               required
+              className="w-full"
             />
           </div>
         </div>
@@ -219,7 +227,7 @@ export default function UploadPage() {
         <Button 
           type="submit" 
           disabled={isLoading || !photoFile || !institution || !instructorName}
-          className="w-full"
+          className="w-full mt-4"
         >
           {isLoading ? "Processing..." : "Process Photo and Data"}
         </Button>
