@@ -13,75 +13,31 @@ export async function POST(req: NextRequest) {
   try {
     console.log('Received inbound email webhook from SendGrid');
     
-    // Check if the request is form data (SendGrid sends multipart/form-data)
+    // Parse the request payload based on content type
+    let payload: Record<string, any>;
     const contentType = req.headers.get('content-type') || '';
     
     if (contentType.includes('multipart/form-data')) {
-      // Parse form data
+      // Parse form data from SendGrid
       const formData = await req.formData();
       
-      // Convert FormData to a regular object for processing
-      const payload: Record<string, any> = {};
+      // Convert FormData to a regular object
+      payload = {};
       for (const [key, value] of formData.entries()) {
         payload[key] = value;
       }
-
-      const envelope = JSON.parse(payload.envelope);
-      const from = envelope.from;
-      const to = envelope.to;
       
-      // Process the email data
-      const result = await handleInboundParseWebhook(payload);
-      
-      console.log('Processed email response:', {
-        instructor: result.instructor,
-        email: from,
-        status: result.status,
-        times: result.times,
-        location: result.location
-      });
-      
-      // Store the result in a database or queue for further processing
-      // (This would be implemented based on our application architecture)
-      
-      // If office hours weren't found in the email, queue a crawl task
-      if (result.status === OfficeHoursStatus.NOT_FOUND && result.email) {
-        await queueInstructorCrawl(
-          result.email, // Using email as ID
-          result.instructor,
-          result.email,
-          result.institution
-        );
-        console.log(`Queued crawl for instructor with no office hours found in email: ${result.instructor}`);
+      // Parse envelope if present
+      if (payload.envelope && typeof payload.envelope === 'string') {
+        try {
+          payload.parsedEnvelope = JSON.parse(payload.envelope);
+        } catch (e) {
+          console.warn('Failed to parse envelope JSON:', e);
+        }
       }
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Email processed successfully',
-        result
-      });
     } else if (contentType.includes('application/json')) {
-      // Handle JSON payload
-      const payload = await req.json();
-      
-      const result = await handleInboundParseWebhook(payload);
-      
-      // If office hours weren't found in the email, queue a crawl task
-      if (result.status === OfficeHoursStatus.NOT_FOUND && result.email) {
-        await queueInstructorCrawl(
-          result.email, // Using email as ID
-          result.instructor,
-          result.email,
-          result.institution
-        );
-        console.log(`Queued crawl for instructor with no office hours found in email: ${result.instructor}`);
-      }
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Email processed successfully',
-        result
-      });
+      // Parse JSON payload
+      payload = await req.json();
     } else {
       console.error('Unsupported content type:', contentType);
       return NextResponse.json(
@@ -89,6 +45,30 @@ export async function POST(req: NextRequest) {
         { status: 415 }
       );
     }
+    
+    // Common processing logic for both payload types
+    const result = await handleInboundParseWebhook(payload);
+    
+    console.log('Processed email response:', {
+      instructor: result.instructor,
+      email: result.email,
+      status: result.status,
+      days: result.days,
+      times: result.times,
+      location: result.location
+    });
+    
+    // Handle "not found" status
+    if (result.status === OfficeHoursStatus.NOT_FOUND && result.email) {
+      console.log(`No office hours found in email for instructor: ${result.instructor}`);
+    }
+    
+    // Return the processed result
+    return NextResponse.json({
+      success: true,
+      message: 'Email processed successfully',
+      result
+    });
   } catch (error) {
     console.error('Error processing inbound email:', error);
     return NextResponse.json(
