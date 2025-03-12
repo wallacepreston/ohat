@@ -8,6 +8,7 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages"
 import { StructuredOutputParser } from "langchain/output_parsers"
 import { RunnableSequence, RunnableLambda } from "@langchain/core/runnables"
 import { StringOutputParser } from "@langchain/core/output_parsers"
+import { queueInstructorCrawl } from "@/app/services/sqsService"
 
 // Define the schema for raw Salesforce input data
 const salesforceDataSchema = z.object({
@@ -249,6 +250,21 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
       // Get initial results from Perplexity search
       const perplexityResults = await searchWithPerplexity(item)
       
+      // Queue SQS message for any instructors with NOT_FOUND status
+      for (const result of perplexityResults) {
+        console.log('Office Hours Status:', OfficeHoursStatus);
+        if (result.status === 'NOT_FOUND' && 
+            item.Contact_Name__c && 
+            item.Contact_Email__c) {
+          console.log(`Queueing crawl for instructor with no office hours: ${item.Contact_Name__c}`)
+          await queueInstructorCrawl(
+            item.Account_ID__c || item.Contact_Name__c, 
+            item.Contact_Email__c,
+            item.Account_Name__c || "Unknown Institution"
+          )
+        }
+      }
+      
       // Validate each result with Exa AI if it has found or partial information
       const validatedResults = await Promise.all(
         perplexityResults.map(async (result) => {
@@ -257,7 +273,8 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
             if (result.status === OfficeHoursStatus.FOUND || 
                 result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
               console.log(`Validating result for ${result.instructor} with Exa AI...`)
-              return await perplexityValidationChain.invoke(result)
+              // return await perplexityValidationChain.invoke(result)
+              return result
             } else {
               return result // Return unchanged if not eligible for validation
             }
@@ -309,7 +326,21 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
       
       // If photo is present, we'll only process the first item and include photo analysis
       if (photo && parsedData.length > 0) {
-        return await processPhotoWithLangChain(parsedData[0], photo)
+        const results = await processPhotoWithLangChain(parsedData[0], photo)
+        
+        // Queue SQS message if photo processing didn't find office hours
+        if (results.length > 0 && 
+            results[0].status === OfficeHoursStatus.NOT_FOUND && 
+            parsedData[0].Contact_Email__c) {
+          console.log(`Queueing crawl for instructor with no office hours found in photo: ${results[0].instructor}`)
+          await queueInstructorCrawl(
+            parsedData[0].Account_ID__c || results[0].instructor, 
+            parsedData[0].Contact_Email__c,
+            results[0].institution
+          )
+        }
+        
+        return results
       } else {
         // Process all records using the dedicated function
         return await processMultipleWithPerplexity(parsedData)
@@ -319,7 +350,21 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
     else {
       console.log('Processing single record')
       if (photo) {
-        return await processPhotoWithLangChain(parsedData, photo)
+        const results = await processPhotoWithLangChain(parsedData, photo)
+        
+        // Queue SQS message if photo processing didn't find office hours
+        if (results.length > 0 && 
+            results[0].status === OfficeHoursStatus.NOT_FOUND && 
+            parsedData.Contact_Email__c) {
+          console.log(`Queueing crawl for instructor with no office hours found in photo: ${results[0].instructor}`)
+          await queueInstructorCrawl(
+            parsedData.Account_ID__c || results[0].instructor, 
+            parsedData.Contact_Email__c,
+            results[0].institution
+          )
+        }
+        
+        return results
       } else {
         // Process the single record as an array of one
         return await processMultipleWithPerplexity([parsedData])
