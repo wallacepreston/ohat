@@ -103,11 +103,6 @@ export default function SearchPage() {
             className="min-h-[200px] font-mono text-sm"
             required
           />
-          <p className="text-sm text-muted-foreground">
-            Enter an array of course/institution objects to search for multiple instructors. 
-            Each object should have at minimum the fields "Account_Name__c" (institution) and 
-            either "School_Course_Name__c" or "Division" (course).
-          </p>
         </div>
         
         <Button type="submit" disabled={isLoading}>

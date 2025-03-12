@@ -216,10 +216,6 @@ export default function UploadPage() {
           </div>
         </div>
         
-        <p className="text-sm text-muted-foreground">
-          Enter the institution name and instructor name to search for their office hours information.
-        </p>
-        
         <Button 
           type="submit" 
           disabled={isLoading || !photoFile || !institution || !instructorName}
