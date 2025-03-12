@@ -1,4 +1,5 @@
 import { SQSClient, SendMessageCommand, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs';
+import { sendInstructorEmail } from './emailService';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -10,6 +11,15 @@ const sqs = new SQSClient({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
   }
 });
+
+// Track processed messages (in-memory for demo purposes)
+// For production, should use a database or persistent store
+const processedMessages: Record<string, {
+  messageId: string;
+  status: 'sent' | 'failed';
+  timestamp: string;
+  details: any;
+}> = {};
 
 /**
  * Sends an SQS message to queue a crawl task for an instructor
@@ -91,23 +101,68 @@ export async function readInstructorCrawlMessages(
           Body: messageBody
         });
         
-        // Here you would normally process the message (e.g., send email)
-        // For now, we're just logging the contents
-        console.log(`Would send email to instructor: ${messageBody.instructorId} <${messageBody.email}> at ${messageBody.institution}`);
+        // Send email using the email service
+        const emailSent = await sendInstructorEmail(
+          messageBody.email,
+          messageBody.instructorName,
+          messageBody.instructorId,
+          messageBody.institution
+        );
         
-        // Delete the message from the queue after processing
-        await sqs.send(new DeleteMessageCommand({
-          QueueUrl: process.env.EMAIL_QUEUE_URL || '',
-          ReceiptHandle: message.ReceiptHandle || ''
-        }));
+        // Mark message status based on email sending result
+        if (message.MessageId) {
+          processedMessages[message.MessageId] = {
+            messageId: message.MessageId,
+            status: emailSent ? 'sent' : 'failed',
+            timestamp: new Date().toISOString(),
+            details: {
+              ...messageBody,
+              emailSent
+            }
+          };
+          
+          
+        }
         
-        console.log(`Deleted message ${message.MessageId} from queue.`);
-      } catch (messageError) {
+        // Delete the message from the queue after processing (only if email was sent successfully)
+        if (emailSent) {
+          await sqs.send(new DeleteMessageCommand({
+            QueueUrl: process.env.EMAIL_QUEUE_URL || '',
+            ReceiptHandle: message.ReceiptHandle || ''
+          }));
+          console.log(`✅ Email sent to instructor: ${messageBody.instructorName} <${messageBody.email}> at ${messageBody.institution}`);
+          console.log(`Deleted message ${message.MessageId} from queue after processing.`);
+        } else {
+          console.log(`❌ Failed to send email to: ${messageBody.email}. Will retry later.`);
+        }
+
+               
+      } catch (messageError: any) { // Type assertion to fix the TypeScript error
         console.error('Error processing message:', messageError);
+        
+        // Mark message as failed in our tracking system
+        if (message.MessageId) {
+          processedMessages[message.MessageId] = {
+            messageId: message.MessageId,
+            status: 'failed',
+            timestamp: new Date().toISOString(),
+            details: { error: messageError?.message || 'Unknown error' }
+          };
+          console.log(`❌ Message ${message.MessageId} marked as FAILED`);
+        }
+        
         // Continue processing other messages even if one fails
       }
     }
   } catch (error) {
     console.error('Error reading SQS messages:', error);
   }
+}
+
+/**
+ * Get a list of processed messages with their status
+ * @returns Record of processed messages with their status
+ */
+export function getProcessedMessages() {
+  return processedMessages;
 } 
