@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, FormEvent } from "react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { processOfficeHours } from "@/app/actions"
 import type { ProcessedOfficeHours } from "@/types/salesforce"
@@ -14,12 +14,16 @@ import ResultsTable from "@/app/components/ResultsTable"
 export default function UploadPage() {
   const [results, setResults] = useState<ProcessedOfficeHours[]>([])
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [institution, setInstitution] = useState<string>("")
+  const [instructorName, setInstructorName] = useState<string>("")
+  const [photoInputDirty, setPhotoInputDirty] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { addStatusMessage, clearStatusMessages } = useStatus()
   const { isLoading, setLoading, setLoadingMessage } = useLoading()
   
   // Add this function to handle photo selection
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhotoInputDirty(true)
     if (e.target.files && e.target.files.length > 0) {
       setPhotoFile(e.target.files[0])
     }
@@ -28,6 +32,7 @@ export default function UploadPage() {
   // Function to clear the selected photo
   const clearPhoto = () => {
     setPhotoFile(null)
+    setPhotoInputDirty(true)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -38,40 +43,53 @@ export default function UploadPage() {
     setResults([]);
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  // Function to mark photo input as dirty when user clicks to select a file
+  const handlePhotoButtonClick = () => {
+    setPhotoInputDirty(true)
+    fileInputRef.current?.click()
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setPhotoInputDirty(true) // Mark as dirty on submission attempt
     setLoading(true)
     setLoadingMessage("Processing photo and data...")
     clearStatusMessages() // Clear previous status messages
     
+    // Check if all required fields are present
+    if (!photoFile) {
+      addStatusMessage('error', 'A photo is required for analysis')
+      setLoading(false)
+      return
+    }
+    
+    if (!institution.trim()) {
+      addStatusMessage('error', 'Institution name is required')
+      setLoading(false)
+      return
+    }
+    
+    if (!instructorName.trim()) {
+      addStatusMessage('error', 'Instructor name is required')
+      setLoading(false)
+      return
+    }
+    
     try {
-      const formData = new FormData(e.currentTarget)
-      
-      // Validate the JSON data
-      const jsonData = formData.get("salesforceData") as string
-      let parsedData
-      
-      try {
-        parsedData = JSON.parse(jsonData)
-        
-        // Ensure the data is a single object, not an array
-        if (Array.isArray(parsedData)) {
-          addStatusMessage('error', 'Please enter a single instructor object, not an array')
-          setLoading(false)
-          return
-        }
-      } catch (error) {
-        addStatusMessage('error', 'Invalid JSON data format')
-        setLoading(false)
-        return
+      // Create the JSON object from form fields
+      const salesforceData = {
+        Account_Name__c: institution.trim(),
+        Contact_Name__c: instructorName.trim()
       }
       
-      // Add photo to formData if one is selected
-      if (photoFile) {
-        formData.append("photo", photoFile)
-      } else {
-        addStatusMessage('warning', 'No photo selected. Processing with text data only.')
-      }
+      // Create a FormData object for submission
+      const formData = new FormData()
+      
+      // Add the JSON data with the same field name expected by the backend
+      formData.append("salesforceData", JSON.stringify(salesforceData))
+      
+      // Add photo to formData
+      formData.append("photo", photoFile)
       
       const data = await processOfficeHours(formData)
       
@@ -121,7 +139,10 @@ export default function UploadPage() {
     <div className="space-y-8">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="photo-upload">Office Hours Photo</Label>
+          <Label htmlFor="photo-upload" className="flex items-center">
+            Office Hours Photo
+            <span className="text-red-500 ml-1">*</span>
+          </Label>
           <div className="flex items-center gap-3">
             <input
               type="file"
@@ -130,13 +151,14 @@ export default function UploadPage() {
               accept="image/*"
               onChange={handlePhotoChange}
               className="hidden"
+              required
             />
             <Button 
               type="button" 
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
+              variant={photoFile ? "outline" : "default"}
+              onClick={handlePhotoButtonClick}
             >
-              Select Photo
+              {photoFile ? "Change Photo" : "Select Photo"}
             </Button>
             
             {photoFile && (
@@ -164,22 +186,45 @@ export default function UploadPage() {
           </p>
         </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="salesforce-data">Instructor Data (Single JSON Object)</Label>
-          <Textarea
-            id="salesforce-data"
-            name="salesforceData"
-            placeholder="Paste single instructor JSON data here..."
-            className="min-h-[200px] font-mono text-sm"
-            required
-          />
-          <p className="text-sm text-muted-foreground">
-            Enter a single instructor JSON object with at minimum the fields "Account_Name__c" (institution) and 
-            either "School_Course_Name__c" or "Division" (course).
-          </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="institution" className="flex items-center">
+              Institution
+              <span className="text-red-500 ml-1">*</span>
+            </Label>
+            <Input
+              id="institution"
+              value={institution}
+              onChange={(e) => setInstitution(e.target.value)}
+              placeholder="Enter institution name"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="instructor-name" className="flex items-center">
+              Instructor Name
+              <span className="text-red-500 ml-1">*</span>
+            </Label>
+            <Input
+              id="instructor-name"
+              value={instructorName}
+              onChange={(e) => setInstructorName(e.target.value)}
+              placeholder="Enter instructor name"
+              required
+            />
+          </div>
         </div>
         
-        <Button type="submit" disabled={isLoading}>
+        <p className="text-sm text-muted-foreground">
+          Enter the institution name and instructor name to search for their office hours information.
+        </p>
+        
+        <Button 
+          type="submit" 
+          disabled={isLoading || !photoFile || !institution || !instructorName}
+          className="w-full"
+        >
           {isLoading ? "Processing..." : "Process Photo and Data"}
         </Button>
       </form>
