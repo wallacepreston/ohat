@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleInboundParseWebhook } from '@/app/services/emailProcessingService';
 import { queueInstructorCrawl } from '@/app/services/sqsService';
-import { OfficeHoursStatus } from '@/types/salesforce';
+import { emitOfficeHoursUpdate } from '@/app/lib/socket';
+import { OfficeHoursStatus, ProcessedOfficeHours } from '@/types/salesforce';
 
 /**
  * API route handler for receiving SendGrid Inbound Parse webhook
@@ -57,6 +58,9 @@ export async function POST(req: NextRequest) {
       times: result.times,
       location: result.location
     });
+
+    // Emit Socket.IO event with the processed data
+    emitOfficeHoursUpdate(result);
     
     // Handle "not found" status
     if (result.status === OfficeHoursStatus.NOT_FOUND && result.email) {

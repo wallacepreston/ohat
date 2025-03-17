@@ -2,26 +2,36 @@ import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
 import { readInstructorCrawlMessages } from './app/services/sqsService';
+import { initializeSocket } from './app/lib/socket';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const dev: boolean = process.env.NODE_ENV !== 'production';
+const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
 // Time interval in milliseconds for polling SQS (default: 15 seconds)
 const POLLING_INTERVAL: number = parseInt(process.env.SQS_POLLING_INTERVAL || '15000', 10);
 
-app.prepare().then(() => {
-  const server = createServer(async (req, res) => {
-    const parsedUrl = parse(req.url || '', true);
-    await handle(req, res, parsedUrl);
-  });
+// Create the HTTP server
+export const server = createServer((req, res) => {
+  const parsedUrl = parse(req.url!, true);
+  handle(req, res, parsedUrl);
+});
 
-  server.listen(process.env.PORT || 3000, (err?: Error) => {
+// Initialize the application
+app.prepare().then(() => {
+  // Initialize Socket.IO with the HTTP server
+  initializeSocket(server);
+  console.log('Socket.IO initialized with server');
+
+  // Start SQS message polling
+  readInstructorCrawlMessages();
+
+  // Start the server
+  const port = process.env.PORT || 3000;
+  server.listen(port, (err?: Error) => {
     if (err) throw err;
-    const address = server.address();
-    const port = typeof address === 'string' ? address : address?.port;
     console.log(`> Ready on http://localhost:${port}`);
     
     // Start the SQS polling mechanism

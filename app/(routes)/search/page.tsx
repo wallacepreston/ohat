@@ -10,16 +10,41 @@ import { OfficeHoursStatus } from "@/types/salesforce"
 import { useStatus } from "@/app/context/StatusContext"
 import { useLoading } from "@/app/context/LoadingContext"
 import ResultsTable from "@/app/components/ResultsTable"
+import { useSocket } from '@/app/hooks/useSocket';
 
 export default function SearchPage() {
   const [results, setResults] = useState<ProcessedOfficeHours[]>([])
   const { addStatusMessage, clearStatusMessages } = useStatus()
   const { isLoading, setLoading, setLoadingMessage } = useLoading()
+  const [statusMessage, setStatusMessage] = useState<string>('');
 
   // Function to clear results
   const clearResults = () => {
     setResults([]);
   }
+
+  // Set up Socket.IO connection
+  useSocket((data) => {
+    // Update the table with new data
+    setResults(prevData => {
+      // Check if we already have this instructor's data
+      const existingIndex = prevData.findIndex(item => item.instructor === data.instructor);
+      
+      if (existingIndex >= 0) {
+        // Update existing entry
+        const newData = [...prevData];
+        newData[existingIndex] = data;
+        return newData;
+      } else {
+        // Add new entry
+        return [...prevData, data];
+      }
+    });
+
+    // Update status message
+    setStatusMessage(`Received update for ${data.instructor}`);
+    setTimeout(() => setStatusMessage(''), 3000); // Clear after 3 seconds
+  });
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
