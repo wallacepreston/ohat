@@ -6,9 +6,17 @@ This directory contains both seed data as well as reference data for testing the
 
 This is a sample instructor response to an email request for office hours.  This comes from the Inbound Parse Webhook from SendGrid.
 
+The localhost url needs to be exposed externally using ngrok.  Otherwise, the email inbound API will not be able to receive the email.  This will be changed once the application is deployed, and we have a persistent public url to call.
+
 ```bash
-curl -X POST http://localhost:3000/api/email/inbound \
-  -F "from=Professor Jane Smith <jane.smith@university.edu>" \
+ngrok http 3000
+```
+
+Then, the ngrok url needs to be used in the SendGrid Inbound Parse webhook.
+
+```bash
+curl -X POST https://<ngrok-url>/api/email/inbound \
+  -F "from=Professor Jose Sosa <jose.sosa@rutgers.edu>" \
   -F "subject=Re: Meeting and Office Hours" \
   -F "text=Hello Chuck,
 
@@ -19,9 +27,9 @@ My office hours this semester are Mondays and Wednesdays from 2:00 PM to 4:00 PM
 Feel free to stop by during my office hours, or we can schedule a specific time if you prefer.
 
 Best regards,
-Professor Jane Smith
-Department of Physics
-University of Example" \
-  -F "envelope={\"to\":[\"inbound@yourdomain.com\"],\"from\":\"jane.smith@university.edu\"}" \
+Professor Jose Sosa
+Department of Mathematics
+Rutgers University New Brunswick" \
+  -F "envelope={\"to\":[\"inbound@yourdomain.com\"],\"from\":\"jose.sosa@rutgers.edu\"}" \
   -F "dkim=pass"
 ```
