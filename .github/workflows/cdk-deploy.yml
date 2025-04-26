@@ -35,24 +35,21 @@ jobs:
 
       - name: Clean up failed bootstrap (if exists)
         run: |
-          # Try to delete the failed bootstrap stack if it exists in us-west-2
-          aws cloudformation delete-stack --stack-name CDKToolkit --region us-west-2 || true
+          # Try to delete the failed bootstrap stack if it exists
+          aws cloudformation delete-stack --stack-name CDKToolkit || true
           # Wait a bit for the deletion to complete or fail
           sleep 10
         continue-on-error: true
 
-      - name: Bootstrap us-west-2 region
-        run: npx cdk bootstrap --force aws://account/us-west-2
+      - name: CDK Bootstrap
+        run: npx cdk bootstrap --force
         working-directory: ./aws/cdk
-        env:
-          CDK_NEW_BOOTSTRAP: "1"
-          AWS_REGION: us-west-2
 
       - name: CDK Deploy
         run: npx cdk deploy --require-approval never
         working-directory: ./aws/cdk
         env:
-          AWS_REGION: us-west-2
+          AWS_REGION: ${{ secrets.AWS_REGION }}
           VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
           LAMBDA_API_KEY: ${{ secrets.LAMBDA_API_KEY }}
           EMAIL_QUEUE_URL: ${{ secrets.EMAIL_QUEUE_URL }} 
