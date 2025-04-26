@@ -25,9 +25,6 @@ app.prepare().then(() => {
   initializeSocket(server);
   console.log('Socket.IO initialized with server');
 
-  // Start SQS message polling
-  readInstructorCrawlMessages();
-
   // Start the server
   const port = process.env.PORT || 3000;
   server.listen(port, (err?: Error) => {
@@ -37,17 +34,14 @@ app.prepare().then(() => {
     // Start the SQS polling mechanism
     console.log(`> Starting SQS polling (every ${POLLING_INTERVAL/1000} seconds)`);
     
-    // Initial poll when the server starts
-    readInstructorCrawlMessages().catch(err => 
-      console.error('Error in initial SQS poll:', err)
-    );
-    
-    // Set up regular polling
-    setInterval(() => {
-      readInstructorCrawlMessages().catch(err => 
-        console.error('Error in SQS polling:', err)
-      );
-    }, POLLING_INTERVAL);
+    // LOCAL ONLY (does not work in Vercel production): Set up regular polling
+    if (dev) {
+      setInterval(() => {
+        readInstructorCrawlMessages().catch(err => 
+          console.error('Error in SQS polling:', err)
+        );
+      }, POLLING_INTERVAL);
+    }
   });
 }).catch(err => {
   console.error('Error starting server:', err);

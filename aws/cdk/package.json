@@ -1,0 +1,21 @@
+{
+  "name": "sqs-lambda-trigger",
+  "version": "1.0.0",
+  "description": "AWS CDK stack for SQS to Lambda integration",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "cdk": "cdk"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.127.0",
+    "constructs": "^10.0.0",
+    "aws-sdk": "^2.1531.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "aws-cdk": "^2.127.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+} 

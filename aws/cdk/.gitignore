@@ -1,0 +1,12 @@
+# CDK-specific
+*.js
+!jest.config.js
+# Exclude Lambda function code from being ignored
+!lambda/*.js
+*.d.ts
+node_modules
+.env
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out 

@@ -1,0 +1,43 @@
+name: Deploy SQS-Lambda Stack
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'aws/cdk/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'aws/cdk/package-lock.json'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./aws/cdk
+
+      - name: CDK Deploy
+        run: npx cdk deploy --require-approval never
+        working-directory: ./aws/cdk
+        env:
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          LAMBDA_API_KEY: ${{ secrets.LAMBDA_API_KEY }}
+          EMAIL_QUEUE_URL: ${{ secrets.EMAIL_QUEUE_URL }} 
