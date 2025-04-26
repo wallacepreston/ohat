@@ -12,7 +12,6 @@ export interface InstructorEmailTemplateData {
   instructor_name: string;
   instructor_id: string;
   institution: string;
-  login_url: string;
   current_date: string;
   support_email: string;
   salesperson_name: string;
@@ -104,7 +103,6 @@ export async function sendInstructorEmail(
     instructor_name: instructorName || 'Professor',
     instructor_id: instructorId,
     institution: institution,
-    login_url: `${process.env.APP_URL}/login?id=${instructorId}`,
     current_date: new Date().toLocaleDateString(),
     support_email: process.env.SUPPORT_EMAIL || 'support@campuscrawler.ai',
     salesperson_name: 'Chuck Page-Turner'
