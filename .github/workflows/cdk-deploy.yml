@@ -33,6 +33,10 @@ jobs:
         run: npm ci
         working-directory: ./aws/cdk
 
+      - name: CDK Bootstrap
+        run: npx cdk bootstrap
+        working-directory: ./aws/cdk
+
       - name: CDK Deploy
         run: npx cdk deploy --require-approval never
         working-directory: ./aws/cdk
