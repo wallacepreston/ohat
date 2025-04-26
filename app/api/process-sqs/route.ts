@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readInstructorCrawlMessages } from '@/app/services/sqsService';
 
+const { LAMBDA_API_KEY = 'super-secret-api-key' } = process.env;
+
 /**
  * API route to process SQS messages
  * This will be called by the AWS Lambda function
@@ -9,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     // Verify the request is coming from our Lambda function
     const authHeader = request.headers.get('authorization');
-    const apiKey = process.env.LAMBDA_API_KEY;
+    const apiKey = LAMBDA_API_KEY;
     
     if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
       return NextResponse.json(
