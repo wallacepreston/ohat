@@ -15,22 +15,42 @@ export class SqsLambdaStack extends cdk.Stack {
     let queue;
     
     if (queueUrl) {
-      // If queue URL is provided, import the existing queue
-      // Convert the URL to an ARN
-      // URL format: https://sqs.REGION.amazonaws.com/ACCOUNT_ID/QUEUE_NAME
-      const urlParts = queueUrl.split('/');
-      const queueName = urlParts[urlParts.length - 1];
-      const accountId = urlParts[urlParts.length - 2];
-      const region = urlParts[2].split('.')[1];
-      
-      const queueArn = `arn:aws:sqs:${region}:${accountId}:${queueName}`;
-      queue = sqs.Queue.fromQueueArn(this, 'ImportedQueue', queueArn);
-      
-      // Output the existing queue URL for reference
-      new cdk.CfnOutput(this, 'ExistingQueueUrl', {
-        value: queueUrl,
-        description: 'The URL of the existing SQS queue',
-      });
+      try {
+        // Convert the URL to an ARN
+        // URL format: https://sqs.REGION.amazonaws.com/ACCOUNT_ID/QUEUE_NAME
+        const urlParts = queueUrl.split('/');
+        const queueName = urlParts[urlParts.length - 1];
+        const accountId = urlParts[urlParts.length - 2];
+        const queueRegion = urlParts[2].split('.')[1];
+        
+        // Check if queue region matches stack region
+        const stackRegion = cdk.Stack.of(this).region;
+        
+        if (queueRegion !== stackRegion && stackRegion !== 'us-west-2') {
+          throw new Error(`Queue region (${queueRegion}) must match Lambda region (${stackRegion}). Please deploy this stack to the ${queueRegion} region.`);
+        }
+        
+        const queueArn = `arn:aws:sqs:${queueRegion}:${accountId}:${queueName}`;
+        queue = sqs.Queue.fromQueueArn(this, 'ImportedQueue', queueArn);
+        
+        // Output the existing queue URL for reference
+        new cdk.CfnOutput(this, 'ExistingQueueUrl', {
+          value: queueUrl,
+          description: 'The URL of the existing SQS queue',
+        });
+      } catch (error) {
+        console.error('Error importing existing queue, creating a new one:', error);
+        // Fall back to creating a new queue if import fails
+        queue = new sqs.Queue(this, 'InstructorCrawlQueue', {
+          visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
+          retentionPeriod: cdk.Duration.days(14),
+        });
+        
+        new cdk.CfnOutput(this, 'NewQueueUrl', {
+          value: queue.queueUrl,
+          description: 'The URL of the new SQS queue',
+        });
+      }
     } else {
       // Create a new SQS queue if none exists
       queue = new sqs.Queue(this, 'InstructorCrawlQueue', {
@@ -57,20 +77,45 @@ export class SqsLambdaStack extends cdk.Stack {
       },
     });
 
-    // Add the SQS queue as an event source for the Lambda
-    sqsProcessorLambda.addEventSource(new lambdaEventSources.SqsEventSource(queue, {
-      batchSize: 10, // Process up to 10 messages at a time (maximum recommended)
-      maxBatchingWindow: cdk.Duration.seconds(60), // Wait up to 60 seconds to collect messages
-      enabled: true,
-    }));
-
-    // Grant the Lambda function permission to read from the SQS queue
-    queue.grantConsumeMessages(sqsProcessorLambda);
+    // Add the SQS queue as an event source for the Lambda only if in the same region
+    // Extract the queue region from the ARN
+    const queueArn = queue.queueArn;
+    const queueRegionMatch = queueArn.match(/arn:aws:sqs:([^:]+):/);
+    const queueRegion = queueRegionMatch ? queueRegionMatch[1] : cdk.Stack.of(this).region;
+    
+    if (queueRegion === cdk.Stack.of(this).region) {
+      sqsProcessorLambda.addEventSource(new lambdaEventSources.SqsEventSource(queue, {
+        batchSize: 10, // Process up to 10 messages at a time (maximum recommended)
+        maxBatchingWindow: cdk.Duration.seconds(60), // Wait up to 60 seconds to collect messages
+        enabled: true,
+      }));
+      
+      // Grant the Lambda function permission to read from the SQS queue
+      queue.grantConsumeMessages(sqsProcessorLambda);
+    } else {
+      // If regions don't match, output a warning instead of creating an event source
+      new cdk.CfnOutput(this, 'RegionMismatchWarning', {
+        value: `WARNING: Queue (${queueRegion}) and Lambda (${cdk.Stack.of(this).region}) are in different regions. SQS trigger not created.`,
+        description: 'Region mismatch warning',
+      });
+      
+      // Provide instruction on manual Lambda invocation
+      new cdk.CfnOutput(this, 'ManualInvocationInstructions', {
+        value: `Create a separate Lambda in the ${queueRegion} region to poll this queue and invoke this Lambda.`,
+        description: 'Manual invocation instructions',
+      });
+    }
 
     // Output the Lambda function name
     new cdk.CfnOutput(this, 'LambdaName', {
       value: sqsProcessorLambda.functionName,
       description: 'The name of the Lambda function',
+    });
+    
+    // Output the Lambda region
+    new cdk.CfnOutput(this, 'LambdaRegion', {
+      value: cdk.Stack.of(this).region,
+      description: 'The region of the Lambda function',
     });
   }
 } 
