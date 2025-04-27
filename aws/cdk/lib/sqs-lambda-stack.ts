@@ -7,7 +7,17 @@ import * as path from 'path';
 
 export class SqsLambdaStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+    // Use a custom synthesizer that doesn't require bootstrapping
+    const synthesizer = new cdk.DefaultStackSynthesizer({
+      // Disable the bootstrap stack version check
+      generateBootstrapVersionRule: false,
+    });
+
+    // Pass the synthesizer to the parent constructor
+    super(scope, id, {
+      ...props,
+      synthesizer,
+    });
 
     // Get or create the SQS queue - use existing EMAIL_QUEUE_URL if available
     // This way you can use the queue already set up in your environment

@@ -27,39 +27,22 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Install dependencies
         run: npm ci
         working-directory: ./aws/cdk
 
-      - name: Check if bootstrap is needed
-        id: check-bootstrap
+      - name: Deploy with bootstrap bypass
         run: |
-          # Always bootstrap to ensure it's properly set up
-          echo "needs_bootstrap=true" >> $GITHUB_OUTPUT
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-
-      - name: Bootstrap with exact account and region
-        if: steps.check-bootstrap.outputs.needs_bootstrap == 'true'
-        run: |
-          echo "Bootstrapping AWS environment in region ${{ secrets.AWS_REGION }}..."
-          npx cdk bootstrap "aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}" --force
+          echo "Deploying to AWS in region ${{ secrets.AWS_REGION }}..."
+          export CDK_DEPLOY_ACCOUNT=${{ secrets.AWS_ACCOUNT_ID }}
+          export CDK_DEPLOY_REGION=${{ secrets.AWS_REGION }}
+          npx cdk deploy --require-approval never --no-version-reporting
         working-directory: ./aws/cdk
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-      
-      - name: CDK Deploy
-        run: npx cdk deploy --require-approval never
-        working-directory: ./aws/cdk
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-          CDK_DEPLOY_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
-          CDK_DEPLOY_REGION: ${{ secrets.AWS_REGION }}
           VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
           LAMBDA_API_KEY: ${{ secrets.LAMBDA_API_KEY }}
           EMAIL_QUEUE_URL: ${{ secrets.EMAIL_QUEUE_URL }} 
