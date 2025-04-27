@@ -33,46 +33,33 @@ jobs:
         run: npm ci
         working-directory: ./aws/cdk
 
-      - name: Synthesize CloudFormation template
+      - name: Check if bootstrap is needed
+        id: check-bootstrap
         run: |
-          echo "Synthesizing CloudFormation template..."
-          npx cdk synth --no-staging > template.yaml
+          # Always bootstrap to ensure it's properly set up
+          echo "needs_bootstrap=true" >> $GITHUB_OUTPUT
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Bootstrap with exact account and region
+        if: steps.check-bootstrap.outputs.needs_bootstrap == 'true'
+        run: |
+          echo "Bootstrapping AWS environment in region ${{ secrets.AWS_REGION }}..."
+          npx cdk bootstrap "aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}" --force
+        working-directory: ./aws/cdk
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      
+      - name: CDK Deploy
+        run: npx cdk deploy --require-approval never
         working-directory: ./aws/cdk
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
           CDK_DEPLOY_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEPLOY_REGION: ${{ secrets.AWS_REGION }}
-
-      - name: Deploy with CloudFormation
-        run: |
-          echo "Deploying to AWS in region ${{ secrets.AWS_REGION }} using CloudFormation..."
-          
-          # Check if stack exists
-          if aws cloudformation describe-stacks --stack-name SqsLambdaStack 2>&1 | grep -q "Stack with id SqsLambdaStack does not exist"; then
-            # Create stack if it doesn't exist
-            aws cloudformation create-stack \
-              --stack-name SqsLambdaStack \
-              --template-body file://template.yaml \
-              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
-          else
-            # Update stack if it exists
-            aws cloudformation update-stack \
-              --stack-name SqsLambdaStack \
-              --template-body file://template.yaml \
-              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND || echo "No updates to be performed"
-          fi
-          
-          # Wait for stack creation/update to complete
-          echo "Waiting for stack operation to complete..."
-          aws cloudformation wait stack-create-complete --stack-name SqsLambdaStack || true
-          aws cloudformation wait stack-update-complete --stack-name SqsLambdaStack || true
-          
-          echo "Deployment completed!"
-        working-directory: ./aws/cdk
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
           VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
           LAMBDA_API_KEY: ${{ secrets.LAMBDA_API_KEY }}
           EMAIL_QUEUE_URL: ${{ secrets.EMAIL_QUEUE_URL }} 
