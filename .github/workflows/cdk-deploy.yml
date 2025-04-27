@@ -33,31 +33,40 @@ jobs:
         run: npm ci
         working-directory: ./aws/cdk
 
-      - name: Clean up failed bootstrap (if exists)
+      - name: Check if bootstrap is needed
+        id: check-bootstrap
         run: |
-          # Try to delete the failed bootstrap stack if it exists
-          aws cloudformation delete-stack --stack-name CDKToolkit --region ${{ secrets.AWS_REGION }} || true
-          # Wait a bit for the deletion to complete or fail
-          sleep 10
+          # Try to check if CDKToolkit stack exists
+          if aws cloudformation describe-stacks --region ${{ secrets.AWS_REGION }} --stack-name CDKToolkit > /dev/null 2>&1; then
+            echo "Bootstrap exists, skipping"
+            echo "needs_bootstrap=false" >> $GITHUB_OUTPUT
+          else
+            echo "Bootstrap does not exist, will bootstrap"
+            echo "needs_bootstrap=true" >> $GITHUB_OUTPUT
+          fi
         continue-on-error: true
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
 
-      - name: CDK Bootstrap
+      - name: Bootstrap if needed
+        if: steps.check-bootstrap.outputs.needs_bootstrap == 'true'
         run: |
-          # Force CDK to bootstrap the correct region
-          npx cdk bootstrap --force aws://unknown-account/${{ secrets.AWS_REGION }}
+          echo "Bootstrapping AWS environment..."
+          npx cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}
         working-directory: ./aws/cdk
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-
+      
       - name: CDK Deploy
         run: npx cdk deploy --require-approval never
         working-directory: ./aws/cdk
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+          CDK_DEPLOY_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEPLOY_REGION: ${{ secrets.AWS_REGION }}
           VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
           LAMBDA_API_KEY: ${{ secrets.LAMBDA_API_KEY }}
           EMAIL_QUEUE_URL: ${{ secrets.EMAIL_QUEUE_URL }} 
