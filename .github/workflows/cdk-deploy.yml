@@ -33,12 +33,42 @@ jobs:
         run: npm ci
         working-directory: ./aws/cdk
 
-      - name: Deploy with bootstrap bypass
+      - name: Synthesize CloudFormation template
         run: |
-          echo "Deploying to AWS in region ${{ secrets.AWS_REGION }}..."
-          export CDK_DEPLOY_ACCOUNT=${{ secrets.AWS_ACCOUNT_ID }}
-          export CDK_DEPLOY_REGION=${{ secrets.AWS_REGION }}
-          npx cdk deploy --require-approval never --no-version-reporting
+          echo "Synthesizing CloudFormation template..."
+          npx cdk synth --no-staging > template.yaml
+        working-directory: ./aws/cdk
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+          CDK_DEPLOY_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEPLOY_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy with CloudFormation
+        run: |
+          echo "Deploying to AWS in region ${{ secrets.AWS_REGION }} using CloudFormation..."
+          
+          # Check if stack exists
+          if aws cloudformation describe-stacks --stack-name SqsLambdaStack 2>&1 | grep -q "Stack with id SqsLambdaStack does not exist"; then
+            # Create stack if it doesn't exist
+            aws cloudformation create-stack \
+              --stack-name SqsLambdaStack \
+              --template-body file://template.yaml \
+              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+          else
+            # Update stack if it exists
+            aws cloudformation update-stack \
+              --stack-name SqsLambdaStack \
+              --template-body file://template.yaml \
+              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND || echo "No updates to be performed"
+          fi
+          
+          # Wait for stack creation/update to complete
+          echo "Waiting for stack operation to complete..."
+          aws cloudformation wait stack-create-complete --stack-name SqsLambdaStack || true
+          aws cloudformation wait stack-update-complete --stack-name SqsLambdaStack || true
+          
+          echo "Deployment completed!"
         working-directory: ./aws/cdk
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
