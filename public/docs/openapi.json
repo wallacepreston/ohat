@@ -3,11 +3,7 @@
   "info": {
     "title": "Office Hours Automation Tool (OHAT) API",
     "version": "1.0.0",
-    "description": "API documentation for the Office Hours Automation Tool",
-    "contact": {
-      "name": "Support",
-      "email": "support@example.com"
-    }
+    "description": "API documentation for the Office Hours Automation Tool"
   },
   "servers": [
     {
