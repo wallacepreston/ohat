@@ -89,9 +89,7 @@ export default function ApiDocs() {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-2 text-gray-900">API Documentation</h1>
         <p className="mb-6 text-gray-700">
-          This documentation describes the Office Hours Tracker API endpoints.
-          The API documentation is automatically generated from our Zod schemas
-          to ensure it's always up-to-date with the actual implementation.
+          This documentation describes the Office Hours Automation Tool API endpoints.
         </p>
         
         <div className="bg-white rounded-lg p-6 shadow-sm border">
