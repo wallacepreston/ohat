@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processOfficeHours } from '@/app/actions';
+import { PhotoUploadSchema } from '@/types/salesforce';
 
 export const config = {
   api: {
@@ -13,20 +14,20 @@ export async function POST(req: NextRequest) {
     
     // Parse the FormData from the request
     const formData = await req.formData();
-    const salesforceData = formData.get('salesforceData');
-    const photo = formData.get('photo');
     
-    // Validate the request
-    if (!salesforceData) {
-      return NextResponse.json(
-        { error: 'Missing required salesforceData field' },
-        { status: 400 }
-      );
-    }
+    // Validate the request using Zod
+    const result = PhotoUploadSchema.safeParse({
+      salesforceData: formData.get('salesforceData'),
+      photo: formData.get('photo')
+    });
     
-    if (!photo || !(photo instanceof File)) {
+    if (!result.success) {
+      // Return validation errors
       return NextResponse.json(
-        { error: 'Missing or invalid photo file' },
+        { 
+          error: 'Invalid request format',
+          details: result.error.format() 
+        },
         { status: 400 }
       );
     }

@@ -1,80 +1,6 @@
-export interface SalesforceData {
-  Account_ID__c?: string;
-  Account_Name__c?: string;
-  Additional_Notes__c?: string;
-  Authorship_Interest__c?: string[];
-  Authorship_Interest_Subtopic__c?: string[];
-  Buy_Criteria__c?: string;
-  Consent_to_Communicate_SFDC__c?: boolean;
-  Contact_Email__c?: string;
-  Contact_Folding_Priority__c?: number;
-  Contact_Name__c?: string;
-  Contact_Status__c?: string;
-  CreatedById?: string;
-  CreatedLastModified__c?: boolean;
-  Creation_Source_ID__c?: string;
-  CS_Identification__c?: string;
-  CS_Partner__c?: string;
-  CS_Partner_Engagement__c?: string;
-  CurrencyIsoCode?: string;
-  Date_of_last_Demo__c?: string;
-  Decision_Maker_Type__c?: string;
-  Deleted__c?: boolean;
-  Digital_Training_Temp_Created__c?: boolean;
-  Division?: string;
-  First_Time_Instructor__c?: boolean;
-  Handoff_Type__c?: string;
-  Have_they_had_a_demo__c?: string;
-  Implied_Consent_Expiration_Date__c?: string;
-  Implied_Consent_Obtained_Date__c?: string;
-  Individual_Motive__c?: string;
-  Instructor_Type__c?: string;
-  INTLId__c?: string;
-  Is_INTL_Record__c?: boolean;
-  Is_Teaching__c?: boolean;
-  Last_Activity_Date__c?: string;
-  LastModifiedById?: string;
-  Last_Visit__c?: string;
-  Lead__c?: boolean;
-  Lead_Submitted_On__c?: string;
-  LegacyId__c?: string;
-  Loyalty__c?: string;
-  Office_Hours__c?: string;
-  Contact_Office_Phone__c?: string;
-  Opp_Year__c?: number;
-  Opportunity__c?: string;
-  Opportunity_Close_Date__c?: string;
-  Opportunity_Contact_Name?: string;
-  Other_Interests__c?: string[];
-  Potential_Vote__c?: boolean;
-  Preferred_Sample_Format__c?: string;
-  Price_Class__c?: string;
-  Primary__c?: boolean;
-  Primary_Interest__c?: string;
-  R2_Record__c?: boolean;
-  Rank__c?: string;
-  Review_Interest__c?: string[];
-  Review_Interest_Subtopic__c?: string[];
-  Risk_vs_Reward__c?: string;
-  Role__c?: string;
-  School_Course_Code__c?: string;
-  School_Course_Name__c?: string;
-  Sort__c?: string;
-  Sort_Keyword__c?: string;
-  Source__c?: string;
-  Stage__c?: string;
-  Strategy_Worksheet__c?: boolean;
-  Subscription_Opp_Contact_Email__c?: string;
-  Synced_with_SEP__c?: boolean;
-  Term_Tot_Enr__c?: string;
-  Term_Tot_Rev__c?: string;
-  Title__c?: string;
-  Total_Enrollment__c?: number;
-  Voting__c?: string;
-  Opportunity_Year_Term__c?: string;
-}
+import { z } from 'zod';
 
-
+// Enums
 export enum OfficeHoursStatus {
   VALIDATED = 'VALIDATED',
   FOUND = 'FOUND',
@@ -83,21 +9,7 @@ export enum OfficeHoursStatus {
   ERROR = 'ERROR'
 }
 
-export interface ProcessedOfficeHours {
-  instructor: string;
-  email: string;
-  institution: string;
-  course: string;
-  days: string[];
-  times: string;
-  location: string;
-  teachingHours: string;
-  teachingLocation: string;
-  term: string;
-  status: OfficeHoursStatus;
-  validatedBy?: string | null;
-}
-
+// Helper functions
 export function formatStatus(status: OfficeHoursStatus): string {
   return status
     .toLowerCase()
@@ -106,53 +18,180 @@ export function formatStatus(status: OfficeHoursStatus): string {
     .join(' ');
 }
 
-// Structured time format for API
-export interface TimeSlot {
-  startHour: string;
-  startMinute: string;
-  startAmPm: string;
-  endHour: string;
-  endMinute: string;
-  endAmPm: string;
-  dayOfWeek: string; // Can include multiple days separated by pipe (e.g., "Monday|Wednesday|Friday")
-  comments?: string;
-  location: string;
-}
+// Zod Schemas
 
-// Batch request and response types
-export interface BatchRequestInstructor {
-  contactId: string;
-  name: string;
-  email: string;
-  department: string;
-  isKeyDecisionMaker?: boolean;
-}
+// TimeSlot schema
+export const TimeSlotSchema = z.object({
+  startHour: z.string(),
+  startMinute: z.string(),
+  startAmPm: z.enum(["AM", "PM"]),
+  endHour: z.string(),
+  endMinute: z.string(),
+  endAmPm: z.enum(["AM", "PM"]),
+  dayOfWeek: z.string(), // Can include multiple days separated by pipe (e.g., "Monday|Wednesday|Friday")
+  comments: z.string().optional(),
+  location: z.string()
+});
 
-export interface BatchRequest {
-  accountId: string;
-  batchId: string;
-  institution: string;
-  instructors: BatchRequestInstructor[];
-}
+// BatchRequestInstructor schema
+export const BatchRequestInstructorSchema = z.object({
+  contactId: z.string(),
+  name: z.string(),
+  email: z.string().email().or(z.literal("")),
+  department: z.string(),
+  isKeyDecisionMaker: z.boolean().optional()
+});
 
-export interface BatchResponseResult {
-  contactId: string;
-  status: "SUCCESS" | "PARTIAL_SUCCESS";
-  officeHours: TimeSlot[];
-  teachingHours: TimeSlot[];
-  source: string;
-}
+// BatchRequest schema
+export const BatchRequestSchema = z.object({
+  accountId: z.string(),
+  batchId: z.string(),
+  institution: z.string(),
+  instructors: z.array(BatchRequestInstructorSchema).nonempty()
+});
 
-export interface BatchResponseException {
-  contactId: string;
-  status: "NOT_FOUND" | "ERROR";
-  reason: string;
-  actionTaken: "NONE" | "EMAIL_SENT" | "CRAWL_QUEUED";
-}
+// BatchResponseResult schema
+export const BatchResponseResultSchema = z.object({
+  contactId: z.string(),
+  status: z.enum(["SUCCESS", "PARTIAL_SUCCESS"]),
+  officeHours: z.array(TimeSlotSchema),
+  teachingHours: z.array(TimeSlotSchema),
+  source: z.string()
+});
 
-export interface BatchResponse {
-  batchId: string;
-  processedTimestamp: string;
-  results: BatchResponseResult[];
-  exceptions: BatchResponseException[];
-}
+// BatchResponseException schema
+export const BatchResponseExceptionSchema = z.object({
+  contactId: z.string(),
+  status: z.enum(["NOT_FOUND", "ERROR"]),
+  reason: z.string(),
+  actionTaken: z.enum(["NONE", "EMAIL_SENT", "CRAWL_QUEUED"])
+});
+
+// BatchResponse schema
+export const BatchResponseSchema = z.object({
+  batchId: z.string(),
+  processedTimestamp: z.string(),
+  results: z.array(BatchResponseResultSchema),
+  exceptions: z.array(BatchResponseExceptionSchema)
+});
+
+// ProcessedOfficeHours schema
+export const ProcessedOfficeHoursSchema = z.object({
+  instructor: z.string(),
+  email: z.string(),
+  institution: z.string(),
+  course: z.string(),
+  days: z.array(z.string()),
+  times: z.string(),
+  location: z.string(),
+  teachingHours: z.string(),
+  teachingLocation: z.string(),
+  term: z.string(),
+  status: z.nativeEnum(OfficeHoursStatus),
+  validatedBy: z.string().nullable().optional()
+});
+
+// SalesforceData schema
+export const SalesforceDataSchema = z.object({
+  Account_ID__c: z.string().optional(),
+  Account_Name__c: z.string().optional(),
+  Additional_Notes__c: z.string().optional(),
+  Authorship_Interest__c: z.array(z.string()).optional(),
+  Authorship_Interest_Subtopic__c: z.array(z.string()).optional(),
+  Buy_Criteria__c: z.string().optional(),
+  Consent_to_Communicate_SFDC__c: z.boolean().optional(),
+  Contact_Email__c: z.string().optional(),
+  Contact_Folding_Priority__c: z.number().optional(),
+  Contact_Name__c: z.string().optional(),
+  Contact_Status__c: z.string().optional(),
+  CreatedById: z.string().optional(),
+  CreatedLastModified__c: z.boolean().optional(),
+  Creation_Source_ID__c: z.string().optional(),
+  CS_Identification__c: z.string().optional(),
+  CS_Partner__c: z.string().optional(),
+  CS_Partner_Engagement__c: z.string().optional(),
+  CurrencyIsoCode: z.string().optional(),
+  Date_of_last_Demo__c: z.string().optional(),
+  Decision_Maker_Type__c: z.string().optional(),
+  Deleted__c: z.boolean().optional(),
+  Digital_Training_Temp_Created__c: z.boolean().optional(),
+  Division: z.string().optional(),
+  First_Time_Instructor__c: z.boolean().optional(),
+  Handoff_Type__c: z.string().optional(),
+  Have_they_had_a_demo__c: z.string().optional(),
+  Implied_Consent_Expiration_Date__c: z.string().optional(),
+  Implied_Consent_Obtained_Date__c: z.string().optional(),
+  Individual_Motive__c: z.string().optional(),
+  Instructor_Type__c: z.string().optional(),
+  INTLId__c: z.string().optional(),
+  Is_INTL_Record__c: z.boolean().optional(),
+  Is_Teaching__c: z.boolean().optional(),
+  Last_Activity_Date__c: z.string().optional(),
+  LastModifiedById: z.string().optional(),
+  Last_Visit__c: z.string().optional(),
+  Lead__c: z.boolean().optional(),
+  Lead_Submitted_On__c: z.string().optional(),
+  LegacyId__c: z.string().optional(),
+  Loyalty__c: z.string().optional(),
+  Office_Hours__c: z.string().optional(),
+  Contact_Office_Phone__c: z.string().optional(),
+  Opp_Year__c: z.number().optional(),
+  Opportunity__c: z.string().optional(),
+  Opportunity_Close_Date__c: z.string().optional(),
+  Opportunity_Contact_Name: z.string().optional(),
+  Other_Interests__c: z.array(z.string()).optional(),
+  Potential_Vote__c: z.boolean().optional(),
+  Preferred_Sample_Format__c: z.string().optional(),
+  Price_Class__c: z.string().optional(),
+  Primary__c: z.boolean().optional(),
+  Primary_Interest__c: z.string().optional(),
+  R2_Record__c: z.boolean().optional(),
+  Rank__c: z.string().optional(),
+  Review_Interest__c: z.array(z.string()).optional(),
+  Review_Interest_Subtopic__c: z.array(z.string()).optional(),
+  Risk_vs_Reward__c: z.string().optional(),
+  Role__c: z.string().optional(),
+  School_Course_Code__c: z.string().optional(),
+  School_Course_Name__c: z.string().optional(),
+  Sort__c: z.string().optional(),
+  Sort_Keyword__c: z.string().optional(),
+  Source__c: z.string().optional(),
+  Stage__c: z.string().optional(),
+  Strategy_Worksheet__c: z.boolean().optional(),
+  Subscription_Opp_Contact_Email__c: z.string().optional(),
+  Synced_with_SEP__c: z.boolean().optional(),
+  Term_Tot_Enr__c: z.string().optional(),
+  Term_Tot_Rev__c: z.string().optional(),
+  Title__c: z.string().optional(),
+  Total_Enrollment__c: z.number().optional(),
+  Voting__c: z.string().optional(),
+  Opportunity_Year_Term__c: z.string().optional()
+});
+
+// Form submission schema for photo uploads
+export const PhotoUploadSchema = z.object({
+  salesforceData: z.string().refine((data) => {
+    try {
+      const parsed = JSON.parse(data);
+      return BatchRequestSchema.safeParse(parsed).success;
+    } catch {
+      return false;
+    }
+  }, {
+    message: "Invalid JSON data. Must contain valid BatchRequest data."
+  }),
+  photo: z.instanceof(File, { 
+    message: "Photo must be a valid file" 
+  })
+});
+
+// Infer TypeScript types from Zod schemas
+export type TimeSlot = z.infer<typeof TimeSlotSchema>;
+export type BatchRequestInstructor = z.infer<typeof BatchRequestInstructorSchema>;
+export type BatchRequest = z.infer<typeof BatchRequestSchema>;
+export type BatchResponseResult = z.infer<typeof BatchResponseResultSchema>;
+export type BatchResponseException = z.infer<typeof BatchResponseExceptionSchema>;
+export type BatchResponse = z.infer<typeof BatchResponseSchema>;
+export type ProcessedOfficeHours = z.infer<typeof ProcessedOfficeHoursSchema>;
+export type SalesforceData = z.infer<typeof SalesforceDataSchema>;
+export type PhotoUpload = z.infer<typeof PhotoUploadSchema>;
