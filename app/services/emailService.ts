@@ -65,7 +65,7 @@ export async function sendTemplateEmail(
     
     const msg = {
       to: actualRecipient,
-      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@campuscrawler.ai',
+      from: process.env.SENDGRID_FROM_EMAIL || 'instructors@mheducation.com',
       templateId,
       dynamicTemplateData: enhancedData,
     };
@@ -104,7 +104,7 @@ export async function sendInstructorEmail(
     instructor_id: instructorId,
     institution: institution,
     current_date: new Date().toLocaleDateString(),
-    support_email: process.env.SUPPORT_EMAIL || 'support@campuscrawler.ai',
+    support_email: process.env.SUPPORT_EMAIL || 'instructors@mheducation.com',
     salesperson_name: 'Chuck Page-Turner'
   };
   

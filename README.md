@@ -1,8 +1,8 @@
-# campuscrawler-ai
+# Office Hours Automation Tool (OHAT)
 
 An AI-powered tool that automates the retrieval of instructor office hours from the web, streamlining sales rep research and saving time.
 
-![Campus Crawler AI Screenshot](screenshot.png)
+![Office Hours Automation Tool (OHAT) Screenshot](screenshot.png)
 
 ## Getting Started
 

@@ -9,7 +9,7 @@ import LoadingOverlay from './components/LoadingOverlay'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Campus Crawler AI',
+  title: 'Office Hours Automation Tool (OHAT)',
   description: 'Find office hours for professors',
 }
 
