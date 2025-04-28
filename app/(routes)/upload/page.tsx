@@ -10,7 +10,7 @@ import { OfficeHoursStatus } from "@/types/salesforce"
 import { useStatus } from "@/app/context/StatusContext"
 import { useLoading } from "@/app/context/LoadingContext"
 import ResultsTable from "@/app/components/ResultsTable"
-import { processBatchOfficeHours, convertBatchResponseToLegacy } from "@/app/lib/api-client"
+import { processBatchOfficeHours, convertBatchResponseToLegacy, processPhotoUpload } from "@/app/lib/api-client"
 
 export default function UploadPage() {
   const [results, setResults] = useState<ProcessedOfficeHours[]>([])
@@ -105,53 +105,24 @@ export default function UploadPage() {
       let data: ProcessedOfficeHours[] = []
       
       try {
-        // Photo uploads need to use the legacy API directly
+        // Photo uploads need to use the API endpoint for photos
         if (photoFile) {
-          data = await processOfficeHours(formData)
+          data = await processPhotoUpload(batchRequest, photoFile)
         } else {
           // Use batch API for non-photo requests
           const batchResponse = await processBatchOfficeHours(batchRequest)
-          data = convertBatchResponseToLegacy(batchResponse)
+          data = convertBatchResponseToLegacy(batchResponse, batchRequest)
         }
       } catch (error) {
-        console.warn("Batch API failed, falling back to legacy API:", error)
+        console.warn("API failed, falling back to legacy API:", error)
         data = await processOfficeHours(formData)
       }
       
-      // Update the results state with the new data
-      setResults(prevResults => [...prevResults, ...data])
+      // Update the results without duplicates
+      updateResultsWithoutDuplicates(data)
       
-      // Calculate counts for each status type from the response data directly
-      const validatedCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
-      const foundCount = data.filter(item => item.status === OfficeHoursStatus.FOUND).length
-      const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND).length
-      const notFoundCount = data.filter(item => item.status === OfficeHoursStatus.NOT_FOUND).length
-      const errorCount = data.filter(item => item.status === OfficeHoursStatus.ERROR).length
-      
-      if (data.length === 0) {
-        addStatusMessage('warning', 'No results were returned')
-      } else {
-        // Add a message for each status type with results
-        if (validatedCount > 0) {
-          addStatusMessage('success', `Validated ${validatedCount} instructor(s)`)
-        }
-        
-        if (foundCount > 0) {
-          addStatusMessage('success', `Found information for ${foundCount} instructor(s)`)
-        }
-        
-        if (partialCount > 0) {
-          addStatusMessage('info', `Found partial information for ${partialCount} instructor(s)`)
-        }
-        
-        if (notFoundCount > 0) {
-          addStatusMessage('warning', `Could not find information for ${notFoundCount} instructor(s)`)
-        }
-        
-        if (errorCount > 0) {
-          addStatusMessage('error', `Error processing ${errorCount} instructor(s)`)
-        }
-      }
+      // Display status messages based on the data
+      displayStatusMessages(data)
     } catch (error) {
       console.error("Error processing data:", error)
       addStatusMessage('error', error instanceof Error ? error.message : 'An unexpected error occurred')
@@ -159,6 +130,68 @@ export default function UploadPage() {
       setLoading(false)
     }
   }
+
+  // Helper function to display status messages based on the provided data
+  const displayStatusMessages = (data: ProcessedOfficeHours[]) => {
+    if (data.length === 0) {
+      addStatusMessage('warning', 'No results were returned')
+      return;
+    }
+    
+    // Calculate counts for each status type based on the provided data
+    const validatedCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
+    const foundCount = data.filter(item => item.status === OfficeHoursStatus.FOUND).length
+    const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND).length
+    const notFoundCount = data.filter(item => item.status === OfficeHoursStatus.NOT_FOUND).length
+    const errorCount = data.filter(item => item.status === OfficeHoursStatus.ERROR).length
+    
+    // Add a message for each status type with results
+    if (validatedCount > 0) {
+      addStatusMessage('success', `Validated ${validatedCount} instructor(s)`)
+    }
+    
+    if (foundCount > 0) {
+      addStatusMessage('success', `Found information for ${foundCount} instructor(s)`)
+    }
+    
+    if (partialCount > 0) {
+      addStatusMessage('info', `Found partial information for ${partialCount} instructor(s)`)
+    }
+    
+    if (notFoundCount > 0) {
+      addStatusMessage('warning', `Could not find information for ${notFoundCount} instructor(s)`)
+    }
+    
+    if (errorCount > 0) {
+      addStatusMessage('error', `Error processing ${errorCount} instructor(s)`)
+    }
+  };
+
+  // Helper function to update results without duplicates
+  const updateResultsWithoutDuplicates = (newData: ProcessedOfficeHours[]) => {
+    setResults(prevResults => {
+      // Create a new array with existing results
+      const updatedResults = [...prevResults];
+      
+      // For each new result
+      newData.forEach(newItem => {
+        // Check if this instructor already exists in our results
+        const existingIndex = updatedResults.findIndex(
+          existingItem => existingItem.instructor === newItem.instructor
+        );
+        
+        if (existingIndex >= 0) {
+          // Replace the existing instructor data with the new data
+          updatedResults[existingIndex] = newItem;
+        } else {
+          // Add new instructor to results
+          updatedResults.push(newItem);
+        }
+      });
+      
+      return updatedResults;
+    });
+  };
 
   return (
     <div className="space-y-8">

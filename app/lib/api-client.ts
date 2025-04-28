@@ -163,6 +163,41 @@ export function convertLegacyToBatchRequest(
 }
 
 /**
+ * Process a photo upload with associated instructor data
+ */
+export async function processPhotoUpload(
+  salesforceData: any,
+  photo: File
+): Promise<ProcessedOfficeHours[]> {
+  try {
+    // Create a FormData object to send the photo and data
+    const formData = new FormData();
+    
+    // Add the photo file
+    formData.append('photo', photo);
+    
+    // Add the Salesforce data as JSON
+    formData.append('salesforceData', JSON.stringify(salesforceData));
+    
+    // Send the request to our API endpoint
+    const response = await fetch('/api/photo-upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error processing photo upload:', error);
+    throw error;
+  }
+}
+
+/**
  * Helper function to get current season
  */
 function getCurrentSeason(): string {
