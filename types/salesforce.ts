@@ -38,14 +38,14 @@ export const BatchRequestInstructorSchema = z.object({
   contactId: z.string(),
   name: z.string(),
   email: z.string().email().or(z.literal("")),
-  department: z.string(),
+  department: z.string().optional(),
   isKeyDecisionMaker: z.boolean().optional()
 });
 
 // BatchRequest schema
 export const BatchRequestSchema = z.object({
   accountId: z.string(),
-  batchId: z.string(),
+  batchId: z.string().optional(),
   institution: z.string(),
   instructors: z.array(BatchRequestInstructorSchema).nonempty()
 });
