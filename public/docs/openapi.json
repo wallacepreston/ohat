@@ -16,13 +16,6 @@
     }
   ],
   "components": {
-    "securitySchemes": {
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "API Key"
-      }
-    },
     "schemas": {
       "TimeSlot": {
         "type": [
@@ -926,11 +919,6 @@
         "tags": [
           "Office Hours"
         ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -997,11 +985,6 @@
         "description": "Uploads a photo containing office hours information along with instructor data for analysis.",
         "tags": [
           "Office Hours"
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
         ],
         "requestBody": {
           "required": true,
@@ -1088,11 +1071,6 @@
         "description": "Processes SQS messages containing instructor information to crawl for office hours data.",
         "tags": [
           "SQS"
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
         ],
         "responses": {
           "200": {

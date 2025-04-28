@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readInstructorCrawlMessages } from '@/app/services/sqsService';
-import { authMiddleware, UserRole } from '@/lib/auth';
 
 // Use the new route segment config pattern
 export const dynamic = 'force-dynamic'; // Route should not be cached
@@ -60,7 +59,6 @@ export const runtime = 'nodejs'; // Use Node.js runtime
  */
 export async function POST(request: NextRequest) {
   try {
-
     // Process the SQS messages
     const result = await readInstructorCrawlMessages();
     
