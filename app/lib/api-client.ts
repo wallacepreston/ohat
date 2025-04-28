@@ -13,7 +13,7 @@ export async function processBatchOfficeHours(
   batchRequest: BatchRequest
 ): Promise<BatchResponse> {
   try {
-    const response = await fetch('/api/batch-office-hours', {
+    const response = await fetch('/api/office-hours', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

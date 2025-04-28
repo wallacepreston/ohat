@@ -119,13 +119,139 @@ function generateOpenApiSpec() {
       },
       schemas: {
         // Convert Zod schemas to OpenAPI schemas
-        TimeSlot: generateSchema(timeSlotSchema),
-        BatchRequestInstructor: generateSchema(batchRequestInstructorSchema),
-        BatchRequest: generateSchema(batchRequestSchema),
-        BatchResponseResult: generateSchema(batchResponseResultSchema),
-        BatchResponseException: generateSchema(batchResponseExceptionSchema),
-        BatchResponse: generateSchema(batchResponseSchema),
-        ProcessedOfficeHours: generateSchema(processedOfficeHoursSchema),
+        TimeSlot: {
+          ...generateSchema(timeSlotSchema),
+          example: {
+            startHour: "09",
+            startMinute: "00",
+            startAmPm: "AM",
+            endHour: "10",
+            endMinute: "30",
+            endAmPm: "AM",
+            dayOfWeek: "Monday",
+            comments: "Office hours are by appointment only",
+            location: "Science Building, Room 301"
+          }
+        },
+        BatchRequestInstructor: {
+          ...generateSchema(batchRequestInstructorSchema),
+          example: {
+            contactId: "00301000ABCDEF",
+            name: "John Smith",
+            email: "john.smith@university.edu",
+            department: "Computer Science",
+            isKeyDecisionMaker: true
+          }
+        },
+        BatchRequest: {
+          ...generateSchema(batchRequestSchema),
+          example: {
+            accountId: "001230000ABCDEF",
+            batchId: "batch-123456",
+            institution: "Example University",
+            instructors: [
+              {
+                contactId: "00301000ABCDEF",
+                name: "John Smith",
+                email: "john.smith@university.edu",
+                department: "Computer Science"
+              }
+            ]
+          }
+        },
+        BatchResponseResult: {
+          ...generateSchema(batchResponseResultSchema),
+          example: {
+            contactId: "00301000ABCDEF",
+            status: "SUCCESS",
+            officeHours: [
+              {
+                startHour: "09",
+                startMinute: "00",
+                startAmPm: "AM",
+                endHour: "10",
+                endMinute: "30",
+                endAmPm: "AM",
+                dayOfWeek: "Monday",
+                location: "Science Building, Room 301"
+              }
+            ],
+            teachingHours: [
+              {
+                startHour: "11",
+                startMinute: "00",
+                startAmPm: "AM",
+                endHour: "12",
+                endMinute: "15",
+                endAmPm: "PM",
+                dayOfWeek: "Wednesday",
+                location: "Main Hall 105"
+              }
+            ],
+            source: "university website"
+          }
+        },
+        BatchResponseException: {
+          ...generateSchema(batchResponseExceptionSchema),
+          example: {
+            contactId: "00301000GHIJKL",
+            status: "NOT_FOUND",
+            reason: "Instructor not found on university website",
+            actionTaken: "EMAIL_SENT"
+          }
+        },
+        BatchResponse: {
+          ...generateSchema(batchResponseSchema),
+          example: {
+            batchId: "batch-123456",
+            processedTimestamp: "2023-10-15T14:30:45Z",
+            results: [
+              {
+                contactId: "00301000ABCDEF",
+                status: "SUCCESS",
+                officeHours: [
+                  {
+                    startHour: "09",
+                    startMinute: "00",
+                    startAmPm: "AM",
+                    endHour: "10",
+                    endMinute: "30",
+                    endAmPm: "AM",
+                    dayOfWeek: "Monday",
+                    location: "Science Building, Room 301"
+                  }
+                ],
+                teachingHours: [],
+                source: "university website"
+              }
+            ],
+            exceptions: [
+              {
+                contactId: "00301000GHIJKL",
+                status: "NOT_FOUND",
+                reason: "Instructor not found on university website",
+                actionTaken: "EMAIL_SENT"
+              }
+            ]
+          }
+        },
+        ProcessedOfficeHours: {
+          ...generateSchema(processedOfficeHoursSchema),
+          example: {
+            instructor: "John Smith",
+            email: "john.smith@university.edu",
+            institution: "Example University",
+            course: "CS 101",
+            days: ["Monday", "Wednesday"],
+            times: "9:00 AM - 10:30 AM",
+            location: "Science Building, Room 301",
+            teachingHours: "MWF 11:00 AM - 12:15 PM",
+            teachingLocation: "Main Hall 105",
+            term: "Fall 2023",
+            status: "FOUND",
+            validatedBy: null
+          }
+        },
         OfficeHoursStatus: {
           type: 'string',
           enum: ["VALIDATED", "FOUND", "PARTIAL_INFO_FOUND", "NOT_FOUND", "ERROR"],
@@ -144,11 +270,16 @@ function generateOpenApiSpec() {
       },
     ],
     paths: {
-      '/api/batch-office-hours': {
+      '/api/office-hours': {
         post: {
           summary: 'Process a batch of instructors\' office hours data',
           description: 'Searches for office hours information for a batch of instructors.',
           tags: ['Office Hours'],
+          security: [
+            {
+              BearerAuth: []
+            }
+          ],
           requestBody: {
             required: true,
             content: {
@@ -214,6 +345,11 @@ function generateOpenApiSpec() {
           summary: 'Process office hours from a photo',
           description: 'Uploads a photo containing office hours information along with instructor data for analysis.',
           tags: ['Office Hours'],
+          security: [
+            {
+              BearerAuth: []
+            }
+          ],
           requestBody: {
             required: true,
             content: {

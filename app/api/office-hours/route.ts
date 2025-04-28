@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BatchRequest, BatchResponse, BatchRequestSchema } from '@/types/salesforce';
 import { processBatchOfficeHours } from '@/app/actions';
+import { authMiddleware, UserRole } from '@/lib/auth';
 
 // Use the new route segment config pattern
 export const dynamic = 'force-dynamic'; // Make sure the route is not statically optimized
@@ -8,7 +9,7 @@ export const runtime = 'nodejs'; // Use Node.js runtime (default, but explicit h
 
 /**
  * @swagger
- * /api/batch-office-hours:
+ * /api/office-hours:
  *   post:
  *     summary: Process a batch of instructors' office hours data
  *     description: Searches for office hours information for a batch of instructors.
@@ -210,6 +211,7 @@ export const runtime = 'nodejs'; // Use Node.js runtime (default, but explicit h
  */
 export async function POST(req: NextRequest) {
   try {
+
     console.log('Received batch office hours request');
     
     // Parse the request body

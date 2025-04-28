@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readInstructorCrawlMessages } from '@/app/services/sqsService';
+import { authMiddleware, UserRole } from '@/lib/auth';
 
 // Use the new route segment config pattern
 export const dynamic = 'force-dynamic'; // Route should not be cached
 export const runtime = 'nodejs'; // Use Node.js runtime
-
-const { LAMBDA_API_KEY = 'super-secret-api-key' } = process.env;
 
 /**
  * @swagger
@@ -61,16 +60,6 @@ const { LAMBDA_API_KEY = 'super-secret-api-key' } = process.env;
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify the request is coming from our Lambda function
-    const authHeader = request.headers.get('authorization');
-    const apiKey = LAMBDA_API_KEY;
-    
-    if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     // Process the SQS messages
     const result = await readInstructorCrawlMessages();
