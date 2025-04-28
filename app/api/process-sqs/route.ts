@@ -8,8 +8,56 @@ export const runtime = 'nodejs'; // Use Node.js runtime
 const { LAMBDA_API_KEY = 'super-secret-api-key' } = process.env;
 
 /**
- * API route to process SQS messages
- * This will be called by the AWS Lambda function
+ * @swagger
+ * /api/process-sqs:
+ *   post:
+ *     summary: Process SQS messages for instructor crawls
+ *     description: >
+ *       Processes SQS messages containing instructor information to crawl
+ *       for office hours data. This endpoint is typically called by an AWS Lambda
+ *       function and requires API key authorization.
+ *     tags:
+ *       - SQS
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: 'SQS messages processed successfully'
+ *       '401':
+ *         description: Unauthorized - Invalid or missing API key
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: 'Unauthorized'
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                 details:
+ *                   type: string
  */
 export async function POST(request: NextRequest) {
   try {

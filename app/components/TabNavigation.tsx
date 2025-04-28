@@ -15,7 +15,7 @@ export default function TabNavigation() {
   }
   
   return (
-    <div className="mb-8">
+    <div className="mb-8 space-y-4">
       <Tabs 
         defaultValue={pathname === "/upload" ? "/upload" : "/search"} 
         onValueChange={handleTabChange}
@@ -30,6 +30,15 @@ export default function TabNavigation() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
+      
+      <div className="flex justify-center">
+        <Link 
+          href="/api-docs" 
+          className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+        >
+          API Documentation
+        </Link>
+      </div>
     </div>
   )
 } 

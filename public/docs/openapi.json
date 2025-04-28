@@ -1,0 +1,1035 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Office Hours Automation Tool (OHAT) API",
+    "version": "1.0.0",
+    "description": "API documentation for the Office Hours Automation Tool",
+    "contact": {
+      "name": "Support",
+      "email": "support@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "API server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Key"
+      }
+    },
+    "schemas": {
+      "TimeSlot": {
+        "type": [
+          "object"
+        ],
+        "properties": {
+          "startHour": {
+            "type": [
+              "string"
+            ]
+          },
+          "startMinute": {
+            "type": [
+              "string"
+            ]
+          },
+          "startAmPm": {
+            "type": [
+              "string"
+            ],
+            "enum": [
+              "AM",
+              "PM"
+            ]
+          },
+          "endHour": {
+            "type": [
+              "string"
+            ]
+          },
+          "endMinute": {
+            "type": [
+              "string"
+            ]
+          },
+          "endAmPm": {
+            "type": [
+              "string"
+            ],
+            "enum": [
+              "AM",
+              "PM"
+            ]
+          },
+          "dayOfWeek": {
+            "type": [
+              "string"
+            ]
+          },
+          "comments": {
+            "type": [
+              "string"
+            ]
+          },
+          "location": {
+            "type": [
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "startHour",
+          "startMinute",
+          "startAmPm",
+          "endHour",
+          "endMinute",
+          "endAmPm",
+          "dayOfWeek",
+          "location"
+        ]
+      },
+      "BatchRequestInstructor": {
+        "type": [
+          "object"
+        ],
+        "properties": {
+          "contactId": {
+            "type": [
+              "string"
+            ]
+          },
+          "name": {
+            "type": [
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "string"
+            ]
+          },
+          "department": {
+            "type": [
+              "string"
+            ]
+          },
+          "isKeyDecisionMaker": {
+            "type": [
+              "boolean"
+            ]
+          }
+        },
+        "required": [
+          "contactId",
+          "name",
+          "email",
+          "department"
+        ]
+      },
+      "BatchRequest": {
+        "type": [
+          "object"
+        ],
+        "properties": {
+          "accountId": {
+            "type": [
+              "string"
+            ]
+          },
+          "batchId": {
+            "type": [
+              "string"
+            ]
+          },
+          "institution": {
+            "type": [
+              "string"
+            ]
+          },
+          "instructors": {
+            "type": [
+              "array"
+            ],
+            "items": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "contactId": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "name": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "email": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "department": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "isKeyDecisionMaker": {
+                  "type": [
+                    "boolean"
+                  ]
+                }
+              },
+              "required": [
+                "contactId",
+                "name",
+                "email",
+                "department"
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "accountId",
+          "batchId",
+          "institution",
+          "instructors"
+        ]
+      },
+      "BatchResponseResult": {
+        "type": [
+          "object"
+        ],
+        "properties": {
+          "contactId": {
+            "type": [
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "string"
+            ],
+            "enum": [
+              "SUCCESS",
+              "PARTIAL_SUCCESS"
+            ]
+          },
+          "officeHours": {
+            "type": [
+              "array"
+            ],
+            "items": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "startHour": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "startMinute": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "startAmPm": {
+                  "type": [
+                    "string"
+                  ],
+                  "enum": [
+                    "AM",
+                    "PM"
+                  ]
+                },
+                "endHour": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "endMinute": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "endAmPm": {
+                  "type": [
+                    "string"
+                  ],
+                  "enum": [
+                    "AM",
+                    "PM"
+                  ]
+                },
+                "dayOfWeek": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "comments": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "location": {
+                  "type": [
+                    "string"
+                  ]
+                }
+              },
+              "required": [
+                "startHour",
+                "startMinute",
+                "startAmPm",
+                "endHour",
+                "endMinute",
+                "endAmPm",
+                "dayOfWeek",
+                "location"
+              ]
+            }
+          },
+          "teachingHours": {
+            "type": [
+              "array"
+            ],
+            "items": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "startHour": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "startMinute": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "startAmPm": {
+                  "type": [
+                    "string"
+                  ],
+                  "enum": [
+                    "AM",
+                    "PM"
+                  ]
+                },
+                "endHour": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "endMinute": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "endAmPm": {
+                  "type": [
+                    "string"
+                  ],
+                  "enum": [
+                    "AM",
+                    "PM"
+                  ]
+                },
+                "dayOfWeek": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "comments": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "location": {
+                  "type": [
+                    "string"
+                  ]
+                }
+              },
+              "required": [
+                "startHour",
+                "startMinute",
+                "startAmPm",
+                "endHour",
+                "endMinute",
+                "endAmPm",
+                "dayOfWeek",
+                "location"
+              ]
+            }
+          },
+          "source": {
+            "type": [
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "contactId",
+          "status",
+          "officeHours",
+          "teachingHours",
+          "source"
+        ]
+      },
+      "BatchResponseException": {
+        "type": [
+          "object"
+        ],
+        "properties": {
+          "contactId": {
+            "type": [
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "string"
+            ],
+            "enum": [
+              "NOT_FOUND",
+              "ERROR"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string"
+            ]
+          },
+          "actionTaken": {
+            "type": [
+              "string"
+            ],
+            "enum": [
+              "NONE",
+              "EMAIL_SENT",
+              "CRAWL_QUEUED"
+            ]
+          }
+        },
+        "required": [
+          "contactId",
+          "status",
+          "reason",
+          "actionTaken"
+        ]
+      },
+      "BatchResponse": {
+        "type": [
+          "object"
+        ],
+        "properties": {
+          "batchId": {
+            "type": [
+              "string"
+            ]
+          },
+          "processedTimestamp": {
+            "type": [
+              "string"
+            ]
+          },
+          "results": {
+            "type": [
+              "array"
+            ],
+            "items": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "contactId": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "status": {
+                  "type": [
+                    "string"
+                  ],
+                  "enum": [
+                    "SUCCESS",
+                    "PARTIAL_SUCCESS"
+                  ]
+                },
+                "officeHours": {
+                  "type": [
+                    "array"
+                  ],
+                  "items": {
+                    "type": [
+                      "object"
+                    ],
+                    "properties": {
+                      "startHour": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "startMinute": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "startAmPm": {
+                        "type": [
+                          "string"
+                        ],
+                        "enum": [
+                          "AM",
+                          "PM"
+                        ]
+                      },
+                      "endHour": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "endMinute": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "endAmPm": {
+                        "type": [
+                          "string"
+                        ],
+                        "enum": [
+                          "AM",
+                          "PM"
+                        ]
+                      },
+                      "dayOfWeek": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "comments": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "location": {
+                        "type": [
+                          "string"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "startHour",
+                      "startMinute",
+                      "startAmPm",
+                      "endHour",
+                      "endMinute",
+                      "endAmPm",
+                      "dayOfWeek",
+                      "location"
+                    ]
+                  }
+                },
+                "teachingHours": {
+                  "type": [
+                    "array"
+                  ],
+                  "items": {
+                    "type": [
+                      "object"
+                    ],
+                    "properties": {
+                      "startHour": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "startMinute": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "startAmPm": {
+                        "type": [
+                          "string"
+                        ],
+                        "enum": [
+                          "AM",
+                          "PM"
+                        ]
+                      },
+                      "endHour": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "endMinute": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "endAmPm": {
+                        "type": [
+                          "string"
+                        ],
+                        "enum": [
+                          "AM",
+                          "PM"
+                        ]
+                      },
+                      "dayOfWeek": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "comments": {
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "location": {
+                        "type": [
+                          "string"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "startHour",
+                      "startMinute",
+                      "startAmPm",
+                      "endHour",
+                      "endMinute",
+                      "endAmPm",
+                      "dayOfWeek",
+                      "location"
+                    ]
+                  }
+                },
+                "source": {
+                  "type": [
+                    "string"
+                  ]
+                }
+              },
+              "required": [
+                "contactId",
+                "status",
+                "officeHours",
+                "teachingHours",
+                "source"
+              ]
+            }
+          },
+          "exceptions": {
+            "type": [
+              "array"
+            ],
+            "items": {
+              "type": [
+                "object"
+              ],
+              "properties": {
+                "contactId": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "status": {
+                  "type": [
+                    "string"
+                  ],
+                  "enum": [
+                    "NOT_FOUND",
+                    "ERROR"
+                  ]
+                },
+                "reason": {
+                  "type": [
+                    "string"
+                  ]
+                },
+                "actionTaken": {
+                  "type": [
+                    "string"
+                  ],
+                  "enum": [
+                    "NONE",
+                    "EMAIL_SENT",
+                    "CRAWL_QUEUED"
+                  ]
+                }
+              },
+              "required": [
+                "contactId",
+                "status",
+                "reason",
+                "actionTaken"
+              ]
+            }
+          }
+        },
+        "required": [
+          "batchId",
+          "processedTimestamp",
+          "results",
+          "exceptions"
+        ]
+      },
+      "ProcessedOfficeHours": {
+        "type": [
+          "object"
+        ],
+        "properties": {
+          "instructor": {
+            "type": [
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "string"
+            ]
+          },
+          "institution": {
+            "type": [
+              "string"
+            ]
+          },
+          "course": {
+            "type": [
+              "string"
+            ]
+          },
+          "days": {
+            "type": [
+              "array"
+            ],
+            "items": {
+              "type": [
+                "string"
+              ]
+            }
+          },
+          "times": {
+            "type": [
+              "string"
+            ]
+          },
+          "location": {
+            "type": [
+              "string"
+            ]
+          },
+          "teachingHours": {
+            "type": [
+              "string"
+            ]
+          },
+          "teachingLocation": {
+            "type": [
+              "string"
+            ]
+          },
+          "term": {
+            "type": [
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "string"
+            ],
+            "enum": [
+              "VALIDATED",
+              "FOUND",
+              "PARTIAL_INFO_FOUND",
+              "NOT_FOUND",
+              "ERROR"
+            ]
+          },
+          "validatedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "instructor",
+          "email",
+          "institution",
+          "course",
+          "days",
+          "times",
+          "location",
+          "teachingHours",
+          "teachingLocation",
+          "term",
+          "status"
+        ]
+      },
+      "OfficeHoursStatus": {
+        "type": "string",
+        "enum": [
+          "VALIDATED",
+          "FOUND",
+          "PARTIAL_INFO_FOUND",
+          "NOT_FOUND",
+          "ERROR"
+        ],
+        "description": "Status of office hours search"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Office Hours",
+      "description": "API endpoints for processing office hours data"
+    },
+    {
+      "name": "SQS",
+      "description": "API endpoints for processing SQS messages"
+    }
+  ],
+  "paths": {
+    "/api/batch-office-hours": {
+      "post": {
+        "summary": "Process a batch of instructors' office hours data",
+        "description": "Searches for office hours information for a batch of instructors.",
+        "tags": [
+          "Office Hours"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/photo-upload": {
+      "post": {
+        "summary": "Process office hours from a photo",
+        "description": "Uploads a photo containing office hours information along with instructor data for analysis.",
+        "tags": [
+          "Office Hours"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "salesforceData",
+                  "photo"
+                ],
+                "properties": {
+                  "salesforceData": {
+                    "type": "string",
+                    "format": "json",
+                    "description": "JSON string containing instructor and institution data"
+                  },
+                  "photo": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Photo file containing office hours information"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProcessedOfficeHours"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing required files or data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/process-sqs": {
+      "post": {
+        "summary": "Process SQS messages for instructor crawls",
+        "description": "Processes SQS messages containing instructor information to crawl for office hours data.",
+        "tags": [
+          "SQS"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "SQS messages processed successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Unauthorized"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
