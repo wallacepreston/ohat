@@ -1,0 +1,28 @@
+{
+  "accountId": "001TROYUNIV2024",
+  "batchId": "batch-20240510-troy",
+  "institution": "TROY UNIVERSITY",
+  "instructors": [
+    {
+      "contactId": "003GARDNER001",
+      "name": "Gardner Heather",
+      "email": "heather.gardner@troy.edu",
+      "department": "SPORT AND FITNESS PROGRAM",
+      "isKeyDecisionMaker": true
+    },
+    {
+      "contactId": "003STONESIFER001",
+      "name": "Stonesifer Shane",
+      "email": "shane.stonesifer@troy.edu",
+      "department": "COMPUTER INFORMATION SYSTEMS",
+      "isKeyDecisionMaker": false
+    },
+    {
+      "contactId": "003ARRINGTON001",
+      "name": "Arrington David",
+      "email": "david.arrington@troy.edu",
+      "department": "NATURAL SCIENCE",
+      "isKeyDecisionMaker": true
+    }
+  ]
+} 

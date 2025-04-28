@@ -1,7 +1,16 @@
 "use server"
 
 import { z } from "zod"
-import type { SalesforceData, ProcessedOfficeHours } from "@/types/salesforce"
+import type { 
+  SalesforceData, 
+  ProcessedOfficeHours, 
+  BatchRequest,
+  BatchResponse,
+  BatchRequestInstructor,
+  BatchResponseResult,
+  BatchResponseException,
+  TimeSlot
+} from "@/types/salesforce"
 import { OfficeHoursStatus } from "@/types/salesforce"
 import { ChatOpenAI } from "@langchain/openai"
 import { HumanMessage, SystemMessage } from "@langchain/core/messages"
@@ -847,5 +856,310 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
       term: getCurrentSeason() + " " + new Date().getFullYear(),
       status: OfficeHoursStatus.ERROR
     }]
+  }
+}
+
+/**
+ * Process a batch request with multiple instructors
+ * This is the new batch API endpoint
+ */
+export async function processBatchOfficeHours(batchRequest: BatchRequest): Promise<BatchResponse> {
+  try {
+    console.log(`Processing batch with ID ${batchRequest.batchId} - ${batchRequest.instructors.length} instructors`);
+    
+    // Create the response template
+    const response: BatchResponse = {
+      batchId: batchRequest.batchId,
+      processedTimestamp: new Date().toISOString(),
+      results: [],
+      exceptions: []
+    };
+    
+    // Process each instructor in the batch
+    const processingPromises = batchRequest.instructors.map(async (instructor) => {
+      try {
+        // Convert to the format expected by our existing processing functions
+        const salesforceData = {
+          Account_ID__c: batchRequest.accountId,
+          Account_Name__c: batchRequest.institution,
+          Contact_Name__c: instructor.name,
+          Contact_Email__c: instructor.email,
+          School_Course_Name__c: instructor.department,
+          // Mark as key decision maker if specified
+          Decision_Maker_Type__c: instructor.isKeyDecisionMaker ? "YES" : "NO"
+        };
+        
+        // Use our existing function to process this instructor
+        const results = await processMultipleWithPerplexity([salesforceData]);
+        
+        // Check if we got any results
+        if (results.length > 0) {
+          const result = results[0];
+          
+          // Determine if this was successful
+          if (result.status === OfficeHoursStatus.FOUND || 
+              result.status === OfficeHoursStatus.VALIDATED || 
+              result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
+            
+            // Convert to the new time slot format
+            const officeHourSlots = convertToTimeSlots(result.days, result.times, result.location);
+            const teachingHourSlots = convertToTimeSlots([], result.teachingHours, result.teachingLocation);
+            
+            // Success response
+            response.results.push({
+              contactId: instructor.contactId,
+              status: result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND ? "PARTIAL_SUCCESS" : "SUCCESS",
+              officeHours: officeHourSlots,
+              teachingHours: teachingHourSlots,
+              source: result.validatedBy || "web_search"
+            });
+          } else {
+            // Exception response for not found or error
+            response.exceptions.push({
+              contactId: instructor.contactId,
+              status: result.status === OfficeHoursStatus.ERROR ? "ERROR" : "NOT_FOUND",
+              reason: result.status === OfficeHoursStatus.ERROR ? 
+                "Error processing instructor data" : 
+                "No published hours available",
+              actionTaken: getActionTaken(instructor, result)
+            });
+          }
+        } else {
+          // No results returned
+          response.exceptions.push({
+            contactId: instructor.contactId,
+            status: "ERROR",
+            reason: "No results returned from processing",
+            actionTaken: "NONE"
+          });
+        }
+      } catch (error) {
+        console.error(`Error processing instructor ${instructor.name}:`, error);
+        
+        // Add to exceptions
+        response.exceptions.push({
+          contactId: instructor.contactId,
+          status: "ERROR",
+          reason: error instanceof Error ? error.message : "Unknown error occurred",
+          actionTaken: "NONE"
+        });
+      }
+    });
+    
+    // Wait for all processing to complete
+    await Promise.all(processingPromises);
+    
+    return response;
+  } catch (error) {
+    console.error("Error in batch processing:", error);
+    throw new Error(`Failed to process batch: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Helper function to determine what action was taken
+ */
+function getActionTaken(
+  instructor: BatchRequestInstructor, 
+  result: ProcessedOfficeHours
+): "NONE" | "EMAIL_SENT" | "CRAWL_QUEUED" {
+  // If instructor is a key decision maker with a valid email, we queue a crawl
+  if (instructor.isKeyDecisionMaker && instructor.email && instructor.email.includes('@')) {
+    // This would normally trigger an actual crawl, but for now we'll just indicate it
+    console.log(`Would queue crawl for key decision maker: ${instructor.name}`);
+    return "CRAWL_QUEUED";
+  }
+  
+  // If we have an email address, we'll send an email
+  if (instructor.email && instructor.email.includes('@')) {
+    // This would normally trigger an email, but for now we'll just indicate it
+    console.log(`Would send email to instructor: ${instructor.email}`);
+    return "EMAIL_SENT";
+  }
+  
+  // Default action
+  return "NONE";
+}
+
+/**
+ * Convert string days/times to structured time slots
+ */
+function convertToTimeSlots(
+  days: string[],
+  timeString: string,
+  location: string
+): TimeSlot[] {
+  // If no time information, return empty array
+  if (!timeString || timeString.trim() === "") {
+    return [];
+  }
+  
+  try {
+    // Simple case: if we have explicit days and one time period
+    if (days.length > 0 && !timeString.includes(',')) {
+      // Parse the time string (e.g., "2-4pm" or "14:00-16:00")
+      const parsedTime = parseTimeString(timeString);
+      
+      // Create a single time slot with multiple days if needed
+      return [{
+        startHour: parsedTime.startHour,
+        startMinute: parsedTime.startMinute,
+        startAmPm: parsedTime.startAmPm,
+        endHour: parsedTime.endHour,
+        endMinute: parsedTime.endMinute,
+        endAmPm: parsedTime.endAmPm,
+        dayOfWeek: days.join('|'),
+        comments: "Weekly office hours",
+        location: location || "Not specified"
+      }];
+    }
+    
+    // More complex case: try to parse from the time string itself
+    // This would handle entries like "Monday 2-4pm, Wednesday 3-5pm"
+    const slots: TimeSlot[] = [];
+    
+    // Split by commas or semicolons to get different time slots
+    const timeSegments = timeString.split(/[,;]/).map(s => s.trim()).filter(s => s);
+    
+    for (const segment of timeSegments) {
+      // Try to extract day and time
+      const dayMatch = segment.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i);
+      if (dayMatch) {
+        const day = dayMatch[1];
+        const timeSegmentWithoutDay = segment.substring(day.length).trim();
+        const parsedTime = parseTimeString(timeSegmentWithoutDay);
+        
+        slots.push({
+          startHour: parsedTime.startHour,
+          startMinute: parsedTime.startMinute,
+          startAmPm: parsedTime.startAmPm,
+          endHour: parsedTime.endHour,
+          endMinute: parsedTime.endMinute,
+          endAmPm: parsedTime.endAmPm,
+          dayOfWeek: day,
+          comments: "Weekly office hours",
+          location: location || "Not specified"
+        });
+      } else {
+        // If no day found, use the time as is
+        const parsedTime = parseTimeString(segment);
+        
+        slots.push({
+          startHour: parsedTime.startHour,
+          startMinute: parsedTime.startMinute,
+          startAmPm: parsedTime.startAmPm,
+          endHour: parsedTime.endHour,
+          endMinute: parsedTime.endMinute,
+          endAmPm: parsedTime.endAmPm,
+          dayOfWeek: days.length > 0 ? days.join('|') : "Not specified",
+          comments: "Weekly office hours",
+          location: location || "Not specified"
+        });
+      }
+    }
+    
+    // If we couldn't parse any slots, return a default
+    return slots.length > 0 ? slots : [{
+      startHour: "",
+      startMinute: "00",
+      startAmPm: "AM",
+      endHour: "",
+      endMinute: "00",
+      endAmPm: "PM",
+      dayOfWeek: days.length > 0 ? days.join('|') : "Not specified",
+      comments: "Weekly office hours",
+      location: location || "Not specified"
+    }];
+  } catch (error) {
+    console.warn('Error parsing time slots:', error);
+    
+    // Fallback to a generic slot
+    return [{
+      startHour: "",
+      startMinute: "00",
+      startAmPm: "AM",
+      endHour: "",
+      endMinute: "00",
+      endAmPm: "PM",
+      dayOfWeek: days.length > 0 ? days.join('|') : "Not specified",
+      comments: `Original: ${timeString}`,
+      location: location || "Not specified"
+    }];
+  }
+}
+
+/**
+ * Parse a time string into hours, minutes, and AM/PM components
+ */
+function parseTimeString(timeString: string): {
+  startHour: string;
+  startMinute: string;
+  startAmPm: string;
+  endHour: string;
+  endMinute: string;
+  endAmPm: string;
+} {
+  // Default values
+  const defaultResult = {
+    startHour: "",
+    startMinute: "00",
+    startAmPm: "AM",
+    endHour: "",
+    endMinute: "00",
+    endAmPm: "PM"
+  };
+  
+  try {
+    // Handle empty or invalid strings
+    if (!timeString || timeString.trim() === "") {
+      return defaultResult;
+    }
+    
+    // Strip any non-time related text
+    const cleanedString = timeString.replace(/(?:office hours|hours|by appointment|or|and)/gi, '').trim();
+    
+    // Different time formats to handle
+    
+    // Format: 2-4pm or 9am-5pm
+    const simplePeriod = /(\d{1,2})(?::(\d{2}))?([ap]m)?(?:\s*[-–—to]\s*)(\d{1,2})(?::(\d{2}))?([ap]m)/i;
+    
+    // Format: 9:30am-11:00am or 1:00pm-3:00pm
+    const fullPeriod = /(\d{1,2}):(\d{2})([ap]m)(?:\s*[-–—to]\s*)(\d{1,2}):(\d{2})([ap]m)/i;
+    
+    // Try to match the different formats
+    let match = cleanedString.match(fullPeriod);
+    if (match) {
+      return {
+        startHour: match[1],
+        startMinute: match[2],
+        startAmPm: match[3].toUpperCase(),
+        endHour: match[4],
+        endMinute: match[5],
+        endAmPm: match[6].toUpperCase()
+      };
+    }
+    
+    match = cleanedString.match(simplePeriod);
+    if (match) {
+      const startMinute = match[2] || "00";
+      const startAmPm = match[3] ? match[3].toUpperCase() : (match[6] ? match[6].toUpperCase() : "AM");
+      const endMinute = match[5] || "00";
+      const endAmPm = match[6] ? match[6].toUpperCase() : startAmPm;
+      
+      return {
+        startHour: match[1],
+        startMinute,
+        startAmPm,
+        endHour: match[4],
+        endMinute,
+        endAmPm
+      };
+    }
+    
+    // If no match found, return default
+    return defaultResult;
+  } catch (error) {
+    console.warn('Error parsing time string:', error);
+    return defaultResult;
   }
 }

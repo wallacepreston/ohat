@@ -10,6 +10,7 @@ import { OfficeHoursStatus } from "@/types/salesforce"
 import { useStatus } from "@/app/context/StatusContext"
 import { useLoading } from "@/app/context/LoadingContext"
 import ResultsTable from "@/app/components/ResultsTable"
+import { processBatchOfficeHours, convertBatchResponseToLegacy } from "@/app/lib/api-client"
 
 export default function UploadPage() {
   const [results, setResults] = useState<ProcessedOfficeHours[]>([])
@@ -76,27 +77,51 @@ export default function UploadPage() {
     }
     
     try {
-      // Create the JSON object from form fields
-      const salesforceData = {
-        Account_Name__c: institution.trim(),
-        Contact_Name__c: instructorName.trim()
+      // Create the batch request object
+      const batchRequest = {
+        batchId: `batch-${Date.now()}`,
+        accountId: institution.trim(),
+        institution: institution.trim(),
+        instructors: [
+          {
+            contactId: `contact-${Date.now()}`,
+            name: instructorName.trim(),
+            email: "", // Add empty email field to satisfy the type
+            department: "" // Add empty department field to satisfy the type
+          }
+        ]
       }
       
       // Create a FormData object for submission
       const formData = new FormData()
       
       // Add the JSON data with the same field name expected by the backend
-      formData.append("salesforceData", JSON.stringify(salesforceData))
+      formData.append("salesforceData", JSON.stringify(batchRequest))
       
       // Add photo to formData
       formData.append("photo", photoFile)
       
-      const data = await processOfficeHours(formData)
+      // Use the batch API if available, otherwise fall back to legacy API
+      let data: ProcessedOfficeHours[] = []
       
-      // Data is guaranteed to be an array now
+      try {
+        // Photo uploads need to use the legacy API directly
+        if (photoFile) {
+          data = await processOfficeHours(formData)
+        } else {
+          // Use batch API for non-photo requests
+          const batchResponse = await processBatchOfficeHours(batchRequest)
+          data = convertBatchResponseToLegacy(batchResponse)
+        }
+      } catch (error) {
+        console.warn("Batch API failed, falling back to legacy API:", error)
+        data = await processOfficeHours(formData)
+      }
+      
+      // Update the results state with the new data
       setResults(prevResults => [...prevResults, ...data])
       
-      // Calculate counts for each status type
+      // Calculate counts for each status type from the response data directly
       const validatedCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
       const foundCount = data.filter(item => item.status === OfficeHoursStatus.FOUND).length
       const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND).length

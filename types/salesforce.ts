@@ -105,3 +105,54 @@ export function formatStatus(status: OfficeHoursStatus): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+
+// Structured time format for API
+export interface TimeSlot {
+  startHour: string;
+  startMinute: string;
+  startAmPm: string;
+  endHour: string;
+  endMinute: string;
+  endAmPm: string;
+  dayOfWeek: string; // Can include multiple days separated by pipe (e.g., "Monday|Wednesday|Friday")
+  comments?: string;
+  location: string;
+}
+
+// Batch request and response types
+export interface BatchRequestInstructor {
+  contactId: string;
+  name: string;
+  email: string;
+  department: string;
+  isKeyDecisionMaker?: boolean;
+}
+
+export interface BatchRequest {
+  accountId: string;
+  batchId: string;
+  institution: string;
+  instructors: BatchRequestInstructor[];
+}
+
+export interface BatchResponseResult {
+  contactId: string;
+  status: "SUCCESS" | "PARTIAL_SUCCESS";
+  officeHours: TimeSlot[];
+  teachingHours: TimeSlot[];
+  source: string;
+}
+
+export interface BatchResponseException {
+  contactId: string;
+  status: "NOT_FOUND" | "ERROR";
+  reason: string;
+  actionTaken: "NONE" | "EMAIL_SENT" | "CRAWL_QUEUED";
+}
+
+export interface BatchResponse {
+  batchId: string;
+  processedTimestamp: string;
+  results: BatchResponseResult[];
+  exceptions: BatchResponseException[];
+}

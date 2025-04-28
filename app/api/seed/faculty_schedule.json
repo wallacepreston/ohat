@@ -1,90 +1,63 @@
-[
-  {
-    "Account_Name__c": "RUTGERS UNIVERSITY NEW BRUNSWICK",
-    "Contact_Name__c": "Sophia Vaksman",
-    "School_Course_Name__c": "MATHEMATICS",
-    "Last_Activity_Date__c": "10/18/24",
-    "Additional_Notes__c": "Lecturer",
-    "Contact_Email__c": "svaksman@rutgers.edu"
-  },
-  {
-    "Account_Name__c": "RUTGERS UNIVERSITY NEW BRUNSWICK",
-    "Contact_Name__c": "Unger Laura",
-    "School_Course_Name__c": "MATHEMATICS",
-    "Last_Activity_Date__c": "10/18/24",
-    "Additional_Notes__c": "Lecturer, MA 112",
-    "Contact_Email__c": "laura.unger@rutgers.edu"
-  },
-  {
-    "Account_Name__c": "RUTGERS UNIVERSITY NEW BRUNSWICK",
-    "Contact_Name__c": "Tsipenyuk Natalya",
-    "School_Course_Name__c": "MATHEMATICS",
-    "Last_Activity_Date__c": "10/18/24",
-    "Additional_Notes__c": "Lecturer",
-    "Contact_Email__c": "natalya.tsipenyuk@rutgers.edu"
-  },
-  {
-    "Account_Name__c": "RUTGERS UNIVERSITY NEW BRUNSWICK",
-    "Contact_Name__c": "Tabanli Sheila",
-    "School_Course_Name__c": "MATHEMATICS",
-    "Last_Activity_Date__c": "10/18/24",
-    "Additional_Notes__c": "Assistant Teaching Professor, Math 123, 125, 135, 136",
-    "Contact_Email__c": "sheila.tabanli@rutgers.edu"
-  },
-  {
-    "Account_Name__c": "RUTGERS UNIVERSITY NEW BRUNSWICK",
-    "Contact_Name__c": "Sosa Jose",
-    "School_Course_Name__c": "MATHEMATICS",
-    "Last_Activity_Date__c": "10/18/24",
-    "Additional_Notes__c": "Lecturer",
-    "Contact_Email__c": "jose.sosa@rutgers.edu"
-  },
-  {
-    "Account_Name__c": "RUTGERS UNIVERSITY NEW BRUNSWICK",
-    "Contact_Name__c": "Silverstein Laura Nicole",
-    "School_Course_Name__c": "MATHEMATICS",
-    "Last_Activity_Date__c": "10/18/24",
-    "Additional_Notes__c": "Assistant Teaching Professor",
-    "Contact_Email__c": "laura.silverstein@rutgers.edu"
-  },
-  {
-    "Account_Name__c": "RUTGERS UNIVERSITY NEW BRUNSWICK",
-    "Contact_Name__c": "Wasserman Eric H.",
-    "School_Course_Name__c": "MATHEMATICS",
-    "Last_Activity_Date__c": "10/18/24",
-    "Additional_Notes__c": "Lecturer",
-    "Contact_Email__c": "eric.wasserman@rutgers.edu"
-  },
-  {
-    "Account_Name__c": "RUTGERS UNIVERSITY NEW BRUNSWICK",
-    "Contact_Name__c": "Vera Laurent",
-    "School_Course_Name__c": "MATHEMATICS",
-    "Last_Activity_Date__c": "10/18/24",
-    "Additional_Notes__c": "Assistant Teaching Professor",
-    "Contact_Email__c": "laurent.vera@rutgers.edu"
-  },
-  {
-    "Account_Name__c": "TROY UNIVERSITY COLUMBUS/FT BENNING",
-    "Contact_Name__c": "Gardner Heather",
-    "School_Course_Name__c": "SPORT AND FITNESS PROGRAM",
-    "Last_Activity_Date__c": "10/10/24",
-    "Additional_Notes__c": "",
-    "Contact_Email__c": "heather.gardner@troy.edu"
-  },
-  {
-    "Account_Name__c": "TROY UNIVERSITY DOTHAN",
-    "Contact_Name__c": "Stonesifer Shane",
-    "School_Course_Name__c": "COMPUTER INFORMATION SYSTEMS",
-    "Last_Activity_Date__c": "10/8/24",
-    "Additional_Notes__c": "",
-    "Contact_Email__c": "shane.stonesifer@troy.edu"
-  },
-  {
-    "Account_Name__c": "TROY UNIVERSITY DOTHAN",
-    "Contact_Name__c": "Arrington David",
-    "School_Course_Name__c": "NATURAL SCIENCE",
-    "Last_Activity_Date__c": "10/13/24",
-    "Additional_Notes__c": "",
-    "Contact_Email__c": "david.arrington@troy.edu"
-  }
-]
+{
+  "accountId": "001RTGRUNVRSTY24",
+  "batchId": "batch-20240510-rutgers",
+  "institution": "RUTGERS UNIVERSITY NEW BRUNSWICK",
+  "instructors": [
+    {
+      "contactId": "003SVAKSMAN001",
+      "name": "Sophia Vaksman",
+      "email": "svaksman@rutgers.edu",
+      "department": "MATHEMATICS",
+      "isKeyDecisionMaker": false
+    },
+    {
+      "contactId": "003UNGERLAURA001",
+      "name": "Unger Laura",
+      "email": "laura.unger@rutgers.edu",
+      "department": "MATHEMATICS",
+      "isKeyDecisionMaker": false
+    },
+    {
+      "contactId": "003TSIPNYUK001",
+      "name": "Tsipenyuk Natalya",
+      "email": "natalya.tsipenyuk@rutgers.edu",
+      "department": "MATHEMATICS",
+      "isKeyDecisionMaker": false
+    },
+    {
+      "contactId": "003TABANLI001",
+      "name": "Tabanli Sheila",
+      "email": "sheila.tabanli@rutgers.edu",
+      "department": "MATHEMATICS",
+      "isKeyDecisionMaker": true
+    },
+    {
+      "contactId": "003JOSESOSA001",
+      "name": "Sosa Jose",
+      "email": "jose.sosa@rutgers.edu",
+      "department": "MATHEMATICS",
+      "isKeyDecisionMaker": false
+    },
+    {
+      "contactId": "003SLVRSTEIN001",
+      "name": "Silverstein Laura Nicole",
+      "email": "laura.silverstein@rutgers.edu",
+      "department": "MATHEMATICS",
+      "isKeyDecisionMaker": true
+    },
+    {
+      "contactId": "003WASSERMAN001",
+      "name": "Wasserman Eric H.",
+      "email": "eric.wasserman@rutgers.edu",
+      "department": "MATHEMATICS",
+      "isKeyDecisionMaker": false
+    },
+    {
+      "contactId": "003VERALAURENT001",
+      "name": "Vera Laurent",
+      "email": "laurent.vera@rutgers.edu",
+      "department": "MATHEMATICS",
+      "isKeyDecisionMaker": true
+    }
+  ]
+}
