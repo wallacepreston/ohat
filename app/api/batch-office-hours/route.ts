@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BatchRequest, BatchResponse, BatchRequestSchema } from '@/types/salesforce';
 import { processBatchOfficeHours } from '@/app/actions';
 
+// Use the new route segment config pattern
+export const dynamic = 'force-dynamic'; // Make sure the route is not statically optimized
+export const runtime = 'nodejs'; // Use Node.js runtime (default, but explicit here)
+
 export async function POST(req: NextRequest) {
   try {
     console.log('Received batch office hours request');

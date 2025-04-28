@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processOfficeHours } from '@/app/actions';
 import { PhotoUploadSchema } from '@/types/salesforce';
 
-export const config = {
-  api: {
-    bodyParser: false, // Disabling the default body parser as we're handling FormData with file uploads
-  },
-};
+// Use the new route segment config pattern with export const runtime and export const dynamic
+export const dynamic = 'force-dynamic'; // Make sure the route is not statically optimized
+export const runtime = 'nodejs'; // Use Node.js runtime (default, but explicit here)
 
 export async function POST(req: NextRequest) {
   try {

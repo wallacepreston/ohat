@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readInstructorCrawlMessages } from '@/app/services/sqsService';
 
+// Use the new route segment config pattern
+export const dynamic = 'force-dynamic'; // Route should not be cached
+export const runtime = 'nodejs'; // Use Node.js runtime
+
 const { LAMBDA_API_KEY = 'super-secret-api-key' } = process.env;
 
 /**
