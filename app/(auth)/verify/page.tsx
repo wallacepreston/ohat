@@ -1,99 +1,119 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useClerk } from "@clerk/nextjs";
-import { EmailLinkErrorCode } from "@clerk/nextjs/errors";
-import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSignUp } from "@clerk/nextjs";
 
 export default function VerifyPage() {
-  const [verificationStatus, setVerificationStatus] = useState("loading");
-  const { handleEmailLinkVerification, loaded } = useClerk();
+  const [verificationCode, setVerificationCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [emailAddress, setEmailAddress] = useState("");
+  const router = useRouter();
+  const { isLoaded, signUp, setActive } = useSignUp();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (!loaded) return;
+    // Attempt to get the pending verification from Clerk
+    const prepareVerification = async () => {
+      if (!isLoaded) return;
 
-    const verify = async () => {
       try {
-        await handleEmailLinkVerification({
-          redirectUrlComplete: "/",
-          redirectUrl: "/sign-up",
-          onVerifiedOnOtherDevice: () => {
-            // Handle verification on another device if needed
-            setVerificationStatus("verified_other_device");
-          },
-        });
-
-        // If not redirected at this point, verification was successful
-        setVerificationStatus("verified");
-      } catch (err: any) {
-        console.error("Verification error:", err);
-        
-        // Handle specific error cases
-        if (err.code === EmailLinkErrorCode.Expired) {
-          setVerificationStatus("expired");
-        } else if (err.code === EmailLinkErrorCode.Failed) {
-          setVerificationStatus("failed");
+        // Get the email from the sign-up attempt
+        if (signUp.emailAddress) {
+          setEmailAddress(signUp.emailAddress);
         } else {
-          setVerificationStatus("failed");
+          // No email in the sign-up attempt, redirect to sign-up
+          router.push("/sign-up");
         }
+      } catch (err) {
+        console.error("Error preparing verification:", err);
+        setError("Failed to prepare verification");
       }
     };
 
-    verify();
-  }, [handleEmailLinkVerification, loaded]);
+    prepareVerification();
+  }, [isLoaded, router, signUp]);
 
-  if (verificationStatus === "loading") {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Verifying...</h1>
-        <p>Please wait while we verify your email.</p>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isLoaded) return;
+    
+    setLoading(true);
+    setError("");
+
+    try {
+      // Attempt to verify the email with the code
+      const result = await signUp.attemptEmailAddressVerification({
+        code: verificationCode,
+      });
+
+      if (result.status === "complete") {
+        // Verification successful, set active session
+        await setActive({ session: result.createdSessionId });
+        router.push("/");
+      } else {
+        console.log("Verification incomplete:", result);
+        setError("Verification incomplete. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("Verification error:", err);
+      setError(err.errors?.[0]?.message || "Failed to verify email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Verify your email
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            We've sent a verification code to {emailAddress}
+          </p>
+        </div>
+        <div className="mt-8">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700">
+                Verification Code
+              </label>
+              <div className="mt-1">
+                <input
+                  id="verificationCode"
+                  name="verificationCode"
+                  type="text"
+                  required
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="Enter code"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="text-red-600 text-sm text-center">{error}</div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading || !isLoaded}
+                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                  loading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+              >
+                {loading ? "Verifying..." : "Verify Email"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>;
-  }
-
-  if (verificationStatus === "expired") {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Link Expired</h1>
-        <p className="mb-4">The verification link has expired.</p>
-        <Link href="/sign-up" className="text-blue-600 hover:underline">
-          Return to sign up
-        </Link>
-      </div>
-    </div>;
-  }
-
-  if (verificationStatus === "failed") {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Verification Failed</h1>
-        <p className="mb-4">We couldn't verify your email. Please try again.</p>
-        <Link href="/sign-up" className="text-blue-600 hover:underline">
-          Return to sign up
-        </Link>
-      </div>
-    </div>;
-  }
-
-  if (verificationStatus === "verified_other_device") {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Verification Successful</h1>
-        <p className="mb-4">Your email has been verified on another device.</p>
-        <Link href="/login" className="text-blue-600 hover:underline">
-          Sign in
-        </Link>
-      </div>
-    </div>;
-  }
-
-  return <div className="min-h-screen flex items-center justify-center">
-    <div className="text-center">
-      <h1 className="text-2xl font-bold mb-4">Verification Successful</h1>
-      <p className="mb-4">Your email has been verified. You can now sign in.</p>
-      <Link href="/login" className="text-blue-600 hover:underline">
-        Sign in
-      </Link>
     </div>
-  </div>;
+  );
 } 
