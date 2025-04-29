@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sign, Secret, SignOptions } from 'jsonwebtoken';
 import { unauthorized } from '@/lib/auth';
 import { verifyAuth } from '@/lib/auth';
-
+import { SignJWT } from 'jose';
 // Use the new route segment config pattern
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,6 +9,8 @@ export const runtime = 'nodejs';
 // JWT configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRY = '30Days';
+
+const secret = new TextEncoder().encode(JWT_SECRET);
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,8 +33,10 @@ export async function POST(req: NextRequest) {
     };
     
     // Sign the JWT token
-    const options: SignOptions = { expiresIn: JWT_EXPIRY };
-    const token = sign(payload, JWT_SECRET as Secret, options);
+    const token = await new SignJWT(payload)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime(JWT_EXPIRY)
+      .sign(secret);
     
     // Return the token
     return NextResponse.json({

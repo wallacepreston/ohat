@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import * as jose from 'jose';
-import * as jwt from 'jsonwebtoken';
 
 const { JWT_SECRET = 'your-secret-key-for-development' } = process.env;
 interface JwtPayload {
@@ -55,7 +53,7 @@ export async function verifyAuth(req: NextRequest): Promise<{
       
       try {
         // Verify the token
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jose.decodeJwt(token);
         
         return {
           authorized: true,
@@ -89,17 +87,4 @@ export function unauthorized(message: string = 'Unauthorized'): NextResponse {
     { error: message },
     { status: 401 }
   );
-}
-
-/**
- * Set auth token cookie
- */
-export function setAuthCookie(token: string, maxAge: number = 60 * 60 * 24 * 7) {
-  const cookieStore = cookies();
-  cookieStore.set('auth_token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge,
-    path: '/',
-  });
 }
