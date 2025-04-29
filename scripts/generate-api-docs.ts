@@ -24,8 +24,8 @@ const createBatchRequestInstructorSchema = () => z.object({
   contactId: z.string(),
   name: z.string(),
   email: z.string(),
-  department: z.string(),
-  isKeyDecisionMaker: z.boolean().optional()
+  department: z.string().optional().nullable(),
+  isKeyDecisionMaker: z.boolean().optional().nullable()
 });
 
 const createBatchRequestSchema = () => z.object({

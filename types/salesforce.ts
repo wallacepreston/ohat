@@ -38,8 +38,8 @@ export const BatchRequestInstructorSchema = z.object({
   contactId: z.string(),
   name: z.string(),
   email: z.string().email().or(z.literal("")),
-  department: z.string().optional(),
-  isKeyDecisionMaker: z.boolean().optional()
+  department: z.string().optional().nullable(),
+  isKeyDecisionMaker: z.boolean().optional().nullable()
 });
 
 // BatchRequest schema
