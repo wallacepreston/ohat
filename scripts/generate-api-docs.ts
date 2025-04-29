@@ -110,6 +110,13 @@ function generateOpenApiSpec() {
       },
     ],
     components: {
+      securitySchemes: {
+        BearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'API Key',
+        },
+      },
       schemas: {
         // Convert Zod schemas to OpenAPI schemas
         TimeSlot: {
@@ -268,6 +275,11 @@ function generateOpenApiSpec() {
           summary: 'Process a batch of instructors\' office hours data',
           description: 'Searches for office hours information for a batch of instructors.',
           tags: ['Office Hours'],
+          security: [
+            {
+              BearerAuth: []
+            }
+          ],
           requestBody: {
             required: true,
             content: {
@@ -333,6 +345,11 @@ function generateOpenApiSpec() {
           summary: 'Process office hours from a photo',
           description: 'Uploads a photo containing office hours information along with instructor data for analysis.',
           tags: ['Office Hours'],
+          security: [
+            {
+              BearerAuth: []
+            }
+          ],
           requestBody: {
             required: true,
             content: {
@@ -417,6 +434,11 @@ function generateOpenApiSpec() {
           summary: 'Process SQS messages for instructor crawls',
           description: 'Processes SQS messages containing instructor information to crawl for office hours data.',
           tags: ['SQS'],
+          security: [
+            {
+              BearerAuth: []
+            }
+          ],
           responses: {
             '200': {
               description: 'Successful operation',
