@@ -15,14 +15,14 @@ export const getApiDocs = () => {
     } else {
       // If the file doesn't exist, return a placeholder spec
       console.warn('OpenAPI specification file not found at public/docs/openapi.json');
-      console.warn('Please run "npm run generate-api-docs" to generate the specification');
+      console.warn('Please run "npm run docs" to generate the specification');
       
       return {
         openapi: '3.0.0',
         info: {
           title: 'Office Hours Automation Tool (OHAT) API',
           version: '1.0.0',
-          description: 'API documentation is not available. Please run "npm run generate-api-docs" to generate it.',
+          description: 'API documentation is not available. Please run "npm run docs" to generate it.',
         },
         paths: {}
       };

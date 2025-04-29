@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "ts-node --project tsconfig.server.json server.ts",
-    "build": "npm run generate-api-docs && next build",
+    "build": "npm run docs && next build",
     "start": "NODE_ENV=production ts-node --project tsconfig.server.json server.ts",
     "lint": "next lint",
-    "generate-api-docs": "ts-node --project tsconfig.scripts.json scripts/generate-api-docs.ts"
+    "docs": "ts-node --project tsconfig.scripts.json scripts/generate-api-docs.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "1.1.14",

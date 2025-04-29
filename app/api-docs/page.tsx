@@ -110,7 +110,7 @@ export default function ApiDocs() {
               <div className="mt-8 p-4 bg-gray-50 rounded-lg text-left max-w-lg mx-auto">
                 <h3 className="font-medium mb-2">To generate the API documentation:</h3>
                 <div className="bg-gray-800 text-gray-200 p-3 rounded font-mono text-sm">
-                  npm run generate-api-docs
+                  npm run docs
                 </div>
                 <p className="mt-2 text-sm text-gray-600">
                   This will create the OpenAPI specification from your Zod schemas.
