@@ -52,8 +52,11 @@ export async function verifyAuth(req: NextRequest): Promise<{
       // Verify the token using JWT
       
       try {
+        // Convert secret to proper format
+        const secretKey = new TextEncoder().encode(JWT_SECRET);
+        
         // Verify the token
-        const payload = jose.decodeJwt(token);
+        const { payload } = await jose.jwtVerify(token, secretKey);
         
         return {
           authorized: true,

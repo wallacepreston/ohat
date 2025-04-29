@@ -45,6 +45,10 @@ export async function middleware(request: NextRequest) {
   console.log("authResult", authResult);
   
   if (!authResult.authorized) {
+    // if the route is an api route, return a 401
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.log("Unauthorized, redirecting to login");
     console.log('authResult', authResult);
     // If unauthorized, redirect to login
