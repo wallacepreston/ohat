@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSignUp } from "@clerk/nextjs";
 
 export default function VerifyPage() {
@@ -11,7 +11,6 @@ export default function VerifyPage() {
   const [emailAddress, setEmailAddress] = useState("");
   const router = useRouter();
   const { isLoaded, signUp, setActive } = useSignUp();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     // Attempt to get the pending verification from Clerk
