@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processOfficeHours } from '@/app/actions';
 import { PhotoUploadSchema } from '@/types/salesforce';
+import { verifyAuth, unauthorized } from '@/lib/auth';
 
 // Use the new route segment config pattern with export const runtime and export const dynamic
 export const dynamic = 'force-dynamic'; // Make sure the route is not statically optimized
@@ -127,6 +128,14 @@ export const runtime = 'nodejs'; // Use Node.js runtime (default, but explicit h
 export async function POST(req: NextRequest) {
   try {
     console.log('Received photo upload request');
+    
+    // Verify authentication using Clerk
+    const auth = await verifyAuth(req);
+    if (!auth.authorized) {
+      return unauthorized(auth.error);
+    }
+    
+    console.log('Authenticated user:', auth.user);
     
     // Parse the FormData from the request
     const formData = await req.formData();

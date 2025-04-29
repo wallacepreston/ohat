@@ -13,6 +13,8 @@
     "@ai-sdk/openai": "1.1.14",
     "@anatine/zod-openapi": "2.2.8",
     "@aws-sdk/client-sqs": "3.758.0",
+    "@clerk/clerk-sdk-node": "4.13.23",
+    "@clerk/nextjs": "6.18.0",
     "@hookform/resolvers": "^3.9.1",
     "@langchain/community": "0.3.32",
     "@langchain/core": "0.3.40",
@@ -53,9 +55,11 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "3.6.0",
+    "dotenv": "16.5.0",
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "jose": "6.0.10",
+    "jsonwebtoken": "9.0.2",
     "langchain": "0.3.19",
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
@@ -77,6 +81,7 @@
     "zod": "3.24.3"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "9.0.9",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
