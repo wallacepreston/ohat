@@ -18,6 +18,7 @@ import { StructuredOutputParser } from "langchain/output_parsers"
 import { RunnableSequence, RunnableLambda } from "@langchain/core/runnables"
 import { StringOutputParser } from "@langchain/core/output_parsers"
 import { queueInstructorCrawl } from "@/app/services/sqsService"
+import { parseTimeString } from "./timeUtils"
 
 // Define the schema for raw Salesforce input data
 const salesforceDataSchema = z.object({
@@ -48,6 +49,7 @@ const officeHoursSchema = z.object({
   teachingHours: z.string().nullable().default(""),
   teachingLocation: z.string().nullable().default(""),
   term: z.string(),
+  comments: z.string().nullable().default(""),
   status: z.string().transform(val => {
     // Transform string status to enum
     switch(val.toLowerCase()) {
@@ -261,7 +263,6 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
       
       // Queue SQS message for any instructors with NOT_FOUND status
       for (const result of perplexityResults) {
-        console.log('Office Hours Status:', OfficeHoursStatus);
         if (result.status === 'NOT_FOUND' && 
             item.Contact_Name__c && 
             item.Contact_Email__c) {
@@ -316,6 +317,7 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
       teachingHours: "",
       teachingLocation: "",
       term: getCurrentSeason() + " " + new Date().getFullYear(),
+      comments: "",
       status: OfficeHoursStatus.ERROR
     }));
   }
@@ -473,6 +475,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
         teachingHours: "",
         teachingLocation: "",
         term: currentTerm,
+        comments: "",
         status: OfficeHoursStatus.ERROR
       };
     }
@@ -509,6 +512,7 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
       teachingHours: "",
       teachingLocation: "",
       term: getCurrentSeason() + " " + new Date().getFullYear(),
+      comments: "",
       status: OfficeHoursStatus.ERROR
     }];
   }
@@ -536,6 +540,7 @@ function createPerplexityPrompt(instructor: string, institution: string, course:
   - teachingHours: A string describing when the instructor teaches their classes
   - teachingLocation: Where the professor TEACHES their classes (classroom, building, etc.)
   - term: The academic term for which the office hours are valid
+  - comments: Any additional details about availability (e.g., "by appointment", "after lecture", "drop-in hours", etc.)
   - status: Either "not found", "validated", "found", "partial info found", or "error"
   
   YOUR TASK:
@@ -545,6 +550,7 @@ function createPerplexityPrompt(instructor: string, institution: string, course:
   4. Look for the LOCATION of office hours (office building, room number, "virtual", etc.)
   5. ALSO search for the professor's teaching schedule (when they teach classes)
   6. Look for the LOCATION where classes are taught (classroom buildings, room numbers)
+  7. IMPORTANT: Look for any special instructions or notes about office hours (e.g. "available by appointment", "available for 30 minutes after lecture", "email to confirm", etc.)
 
   IMPORTANT FORMATTING INSTRUCTIONS:
   - If there are multiple times and locations for either office hours or teaching, include the time with each location.
@@ -553,6 +559,7 @@ function createPerplexityPrompt(instructor: string, institution: string, course:
     For example: "Room 102 (Wednesday 7:00-7:30 pm), Virtual via Zoom (Thursday and Sunday 8:00-9:00 pm)"
   - Include day information along with times when different locations are used on different days
   - Make sure to match each time/day with its corresponding location when listing multiple locations.
+  - In the "comments" field, include any additional contexts or instructions about how the professor makes themselves available (such as "by appointment only", "available after lectures", "drop-in hours", etc.)
 
   Only mark status as "validated" if you find SPECIFIC days, times, and locations for both office hours and teaching hours.
   Mark as "found" if you find complete information that hasn't been externally validated.
@@ -719,6 +726,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         - teachingHours: A string describing when the instructor teaches their classes
         - teachingLocation: Where the professor TEACHES their classes (classroom, building, etc.)
         - term: The academic term for which the office hours are valid
+        - comments: Any additional details about availability (e.g., "by appointment", "after lecture", "drop-in hours", etc.)
         - status: Either "not found", "found", "validated", "partial info found", or "error"
         
         IMPORTANT FORMATTING INSTRUCTIONS:
@@ -728,6 +736,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
           For example: "Room 102 (Wednesday 7:00-7:30 pm), Virtual via Zoom (Thursday and Sunday 8:00-9:00 pm)"
         - Include day information along with times when different locations are used on different days
         - Make sure to match each time/day with its corresponding location when listing multiple locations.
+        - In the "comments" field, include any additional contexts or instructions about how the professor makes themselves available (such as "by appointment only", "available after lectures", "drop-in hours", etc.)
       
         Only mark status as "validated" if you find SPECIFIC days, times, and locations for both office hours and teaching hours.
         Mark as "found" if you find complete information that hasn't been externally validated.
@@ -772,7 +781,10 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
             location: "",
             teachingHours: "",
             teachingLocation: "",
-            status: OfficeHoursStatus.ERROR
+            status: OfficeHoursStatus.ERROR,
+            course: "",
+            term: "",
+            comments: ""
           }
         }
       }
@@ -813,6 +825,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
           location: result.location || "",
           teachingHours: result.teachingHours || "",
           teachingLocation: result.teachingLocation || "",
+          comments: result.comments || "",
           status: status,
           validatedBy: result.validatedBy || null
         };
@@ -838,7 +851,8 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         teachingLocation: "",
         status: OfficeHoursStatus.ERROR,
         course: "",
-        term: ""
+        term: "",
+        comments: ""
       }]
     }
   } catch (error) {
@@ -854,6 +868,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
       teachingHours: "",
       teachingLocation: "",
       term: getCurrentSeason() + " " + new Date().getFullYear(),
+      comments: "",
       status: OfficeHoursStatus.ERROR
     }]
   }
@@ -869,7 +884,7 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
     
     // Create the response template
     const response: BatchResponse = {
-      batchId: batchRequest.batchId,
+      batchId: batchRequest.batchId || `batch-${Date.now()}`, // Ensure batchId is never undefined
       processedTimestamp: new Date().toISOString(),
       results: [],
       exceptions: []
@@ -902,8 +917,8 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
               result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
             
             // Convert to the new time slot format
-            const officeHourSlots = convertToTimeSlots(result.days, result.times, result.location);
-            const teachingHourSlots = convertToTimeSlots([], result.teachingHours, result.teachingLocation);
+            const officeHourSlots = convertToTimeSlots(result.days, result.times, result.location, result.comments || undefined);
+            const teachingHourSlots = convertToTimeSlots([], result.teachingHours, result.teachingLocation, result.comments || undefined);
             
             // Success response
             response.results.push({
@@ -987,7 +1002,8 @@ function getActionTaken(
 function convertToTimeSlots(
   days: string[],
   timeString: string,
-  location: string
+  location: string,
+  comments?: string
 ): TimeSlot[] {
   // If no time information, return empty array
   if (!timeString || timeString.trim() === "") {
@@ -998,20 +1014,25 @@ function convertToTimeSlots(
     // Simple case: if we have explicit days and one time period
     if (days.length > 0 && !timeString.includes(',')) {
       // Parse the time string (e.g., "2-4pm" or "14:00-16:00")
-      const parsedTime = parseTimeString(timeString);
+      const result = parseTimeString(timeString);
       
-      // Create a single time slot with multiple days if needed
-      return [{
-        startHour: parsedTime.startHour,
-        startMinute: parsedTime.startMinute,
-        startAmPm: parsedTime.startAmPm,
-        endHour: parsedTime.endHour,
-        endMinute: parsedTime.endMinute,
-        endAmPm: parsedTime.endAmPm,
-        dayOfWeek: days.join('|'),
-        comments: "Weekly office hours",
-        location: location || "Not specified"
-      }];
+      // If parsing was successful, create a slot
+      if (result.success && result.timeSlot) {
+        return [{
+          startHour: result.timeSlot.startHour,
+          startMinute: result.timeSlot.startMinute,
+          startAmPm: result.timeSlot.startAmPm,
+          endHour: result.timeSlot.endHour,
+          endMinute: result.timeSlot.endMinute,
+          endAmPm: result.timeSlot.endAmPm,
+          dayOfWeek: days.join('|'),
+          comments: comments ? comments : "Weekly office hours",
+          location: location || "Not specified"
+        }];
+      }
+      
+      // If parsing failed, return empty array
+      return [];
     }
     
     // More complex case: try to parse from the time string itself
@@ -1029,137 +1050,44 @@ function convertToTimeSlots(
         const timeSegmentWithoutDay = segment.substring(day.length).trim();
         const parsedTime = parseTimeString(timeSegmentWithoutDay);
         
-        slots.push({
-          startHour: parsedTime.startHour,
-          startMinute: parsedTime.startMinute,
-          startAmPm: parsedTime.startAmPm,
-          endHour: parsedTime.endHour,
-          endMinute: parsedTime.endMinute,
-          endAmPm: parsedTime.endAmPm,
-          dayOfWeek: day,
-          comments: "Weekly office hours",
-          location: location || "Not specified"
-        });
+        if (parsedTime.success && parsedTime.timeSlot) {
+          slots.push({
+            startHour: parsedTime.timeSlot.startHour,
+            startMinute: parsedTime.timeSlot.startMinute,
+            startAmPm: parsedTime.timeSlot.startAmPm,
+            endHour: parsedTime.timeSlot.endHour,
+            endMinute: parsedTime.timeSlot.endMinute,
+            endAmPm: parsedTime.timeSlot.endAmPm,
+            dayOfWeek: day,
+            comments: comments ? comments : "Weekly office hours",
+            location: location || "Not specified"
+          });
+        }
       } else {
         // If no day found, use the time as is
         const parsedTime = parseTimeString(segment);
         
-        slots.push({
-          startHour: parsedTime.startHour,
-          startMinute: parsedTime.startMinute,
-          startAmPm: parsedTime.startAmPm,
-          endHour: parsedTime.endHour,
-          endMinute: parsedTime.endMinute,
-          endAmPm: parsedTime.endAmPm,
-          dayOfWeek: days.length > 0 ? days.join('|') : "Not specified",
-          comments: "Weekly office hours",
-          location: location || "Not specified"
-        });
+        if (parsedTime.success && parsedTime.timeSlot) {
+          slots.push({
+            startHour: parsedTime.timeSlot.startHour,
+            startMinute: parsedTime.timeSlot.startMinute,
+            startAmPm: parsedTime.timeSlot.startAmPm,
+            endHour: parsedTime.timeSlot.endHour,
+            endMinute: parsedTime.timeSlot.endMinute,
+            endAmPm: parsedTime.timeSlot.endAmPm,
+            dayOfWeek: days.length > 0 ? days.join('|') : "Not specified",
+            comments: comments ? comments : "Weekly office hours",
+            location: location || "Not specified"
+          });
+        }
       }
     }
     
-    // If we couldn't parse any slots, return a default
-    return slots.length > 0 ? slots : [{
-      startHour: "",
-      startMinute: "00",
-      startAmPm: "AM",
-      endHour: "",
-      endMinute: "00",
-      endAmPm: "PM",
-      dayOfWeek: days.length > 0 ? days.join('|') : "Not specified",
-      comments: "Weekly office hours",
-      location: location || "Not specified"
-    }];
+    // Return all the valid parsed slots
+    return slots;
   } catch (error) {
     console.warn('Error parsing time slots:', error);
-    
-    // Fallback to a generic slot
-    return [{
-      startHour: "",
-      startMinute: "00",
-      startAmPm: "AM",
-      endHour: "",
-      endMinute: "00",
-      endAmPm: "PM",
-      dayOfWeek: days.length > 0 ? days.join('|') : "Not specified",
-      comments: `Original: ${timeString}`,
-      location: location || "Not specified"
-    }];
-  }
-}
-
-/**
- * Parse a time string into hours, minutes, and AM/PM components
- */
-function parseTimeString(timeString: string): {
-  startHour: string;
-  startMinute: string;
-  startAmPm: string;
-  endHour: string;
-  endMinute: string;
-  endAmPm: string;
-} {
-  // Default values
-  const defaultResult = {
-    startHour: "",
-    startMinute: "00",
-    startAmPm: "AM",
-    endHour: "",
-    endMinute: "00",
-    endAmPm: "PM"
-  };
-  
-  try {
-    // Handle empty or invalid strings
-    if (!timeString || timeString.trim() === "") {
-      return defaultResult;
-    }
-    
-    // Strip any non-time related text
-    const cleanedString = timeString.replace(/(?:office hours|hours|by appointment|or|and)/gi, '').trim();
-    
-    // Different time formats to handle
-    
-    // Format: 2-4pm or 9am-5pm
-    const simplePeriod = /(\d{1,2})(?::(\d{2}))?([ap]m)?(?:\s*[-–—to]\s*)(\d{1,2})(?::(\d{2}))?([ap]m)/i;
-    
-    // Format: 9:30am-11:00am or 1:00pm-3:00pm
-    const fullPeriod = /(\d{1,2}):(\d{2})([ap]m)(?:\s*[-–—to]\s*)(\d{1,2}):(\d{2})([ap]m)/i;
-    
-    // Try to match the different formats
-    let match = cleanedString.match(fullPeriod);
-    if (match) {
-      return {
-        startHour: match[1],
-        startMinute: match[2],
-        startAmPm: match[3].toUpperCase(),
-        endHour: match[4],
-        endMinute: match[5],
-        endAmPm: match[6].toUpperCase()
-      };
-    }
-    
-    match = cleanedString.match(simplePeriod);
-    if (match) {
-      const startMinute = match[2] || "00";
-      const startAmPm = match[3] ? match[3].toUpperCase() : (match[6] ? match[6].toUpperCase() : "AM");
-      const endMinute = match[5] || "00";
-      const endAmPm = match[6] ? match[6].toUpperCase() : startAmPm;
-      
-      return {
-        startHour: match[1],
-        startMinute,
-        startAmPm,
-        endHour: match[4],
-        endMinute,
-        endAmPm
-      };
-    }
-    
-    // If no match found, return default
-    return defaultResult;
-  } catch (error) {
-    console.warn('Error parsing time string:', error);
-    return defaultResult;
+    // Return empty array instead of fallback values
+    return [];
   }
 }

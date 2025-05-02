@@ -87,6 +87,7 @@ export const ProcessedOfficeHoursSchema = z.object({
   teachingHours: z.string(),
   teachingLocation: z.string(),
   term: z.string(),
+  comments: z.string().nullable().optional(),
   status: z.nativeEnum(OfficeHoursStatus),
   validatedBy: z.string().nullable().optional()
 });
