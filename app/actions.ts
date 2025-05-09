@@ -958,6 +958,18 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
 
     // Apply validation logic to ensure consistent status
     response.results = validateResultStatus(response.results);
+    // if any results are not found, move them to the exceptions array
+    const exceptions = response.results.filter(result => result.status === "NOT_FOUND");
+    for (const exception of exceptions) {
+      response.exceptions.push({
+        contactId: exception.contactId,
+        status: "NOT_FOUND",
+        reason: "No published hours available",
+        actionTaken: "NONE"
+      });
+    }
+    // remove the not found results from the results array
+    response.results = response.results.filter(result => result.status !== "NOT_FOUND");
     
     return response;
   } catch (error) {

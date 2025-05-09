@@ -44,7 +44,7 @@ export const BatchRequestSchema = z.object({
 // BatchResponseResult schema
 export const BatchResponseResultSchema = z.object({
   contactId: z.string(),
-  status: z.enum(["SUCCESS", "PARTIAL_SUCCESS"]),
+  status: z.enum(["SUCCESS", "PARTIAL_SUCCESS", "NOT_FOUND"]),
   officeHours: z.array(TimeSlotSchema),
   teachingHours: z.array(TimeSlotSchema),
   source: z.string()
