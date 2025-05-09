@@ -2,16 +2,14 @@
 
 import { z } from "zod"
 import type { 
-  SalesforceData, 
   ProcessedOfficeHours, 
   BatchRequest,
   BatchResponse,
   BatchRequestInstructor,
-  BatchResponseResult,
-  BatchResponseException,
   TimeSlot
 } from "@/types/salesforce"
 import { OfficeHoursStatus } from "@/types/salesforce"
+import { determineResultStatus, validateResultStatus } from "@/app/utils/status"
 import { ChatOpenAI } from "@langchain/openai"
 import { HumanMessage, SystemMessage } from "@langchain/core/messages"
 import { StructuredOutputParser } from "langchain/output_parsers"
@@ -353,10 +351,12 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
           )
         }
         
-        return results
+        // Apply the same validation logic to photo results
+        return validateResultStatus(results);
       } else {
         // Process all records using the dedicated function
-        return await processMultipleWithPerplexity(parsedData)
+        const results = await processMultipleWithPerplexity(parsedData)
+        return validateResultStatus(results);
       }
     } 
     // Handle single object
@@ -378,10 +378,12 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
           )
         }
         
-        return results
+        // Apply the same validation logic to photo results
+        return validateResultStatus(results);
       } else {
         // Process the single record as an array of one
-        return await processMultipleWithPerplexity([parsedData])
+        const results = await processMultipleWithPerplexity([parsedData])
+        return validateResultStatus(results);
       }
     }
   } catch (error) {
@@ -552,39 +554,27 @@ function createPerplexityPrompt(instructor: string, institution: string, course:
   6. Look for the LOCATION where classes are taught (classroom buildings, room numbers)
   7. IMPORTANT: Look for any special instructions or notes about office hours (e.g. "available by appointment", "available for 30 minutes after lecture", "email to confirm", etc.)
 
-  IMPORTANT FORMATTING INSTRUCTIONS:
-  - If there are multiple times and locations for either office hours or teaching, include the time with each location.
-    For example: "CDL room 110 (3:50-5:10 pm), CDL room 102 (5:40-7:00 pm)" instead of just "CDL room 110, CDL room 102"
-  - When there are both in-person and virtual locations, specify which days/times apply to each.
-    For example: "Room 102 (Wednesday 7:00-7:30 pm), Virtual via Zoom (Thursday and Sunday 8:00-9:00 pm)"
-  - Include day information along with times when different locations are used on different days
-  - Make sure to match each time/day with its corresponding location when listing multiple locations.
-  - In the "comments" field, include any additional contexts or instructions about how the professor makes themselves available (such as "by appointment only", "available after lectures", "drop-in hours", etc.)
+  IMPORTANT FORMAT REQUIREMENTS:
+  - For times, location, and teachingHours fields: ONLY include SPECIFIC information that you find.
+  - If you don't find exact times, use "Not specified" (don't include vague descriptions or estimates).
+  - If you don't find an exact location, use "Not specified" (don't guess or infer).
+  - If you find days but no times, include the days in the days array, but use "Not specified" for times.
+  - Do NOT include phrases like "Not explicitly stated but..." or similar approximations.
+  - For times and teachingHours, ALWAYS use one of these formats:
+     * "10:00 AM - 12:00 PM"
+     * "3:30 PM - 5:00 PM"
+     * "Not specified"
+  - For locations, ALWAYS use either a specific location or "Not specified".
 
-  Only mark status as "validated" if you find SPECIFIC days, times, and locations for both office hours and teaching hours.
-  Mark as "found" if you find complete information that hasn't been externally validated.
-  Mark as "partial info found" if you find some information (like office hours but not teaching hours, or times but not locations).
-  Only mark as "not found" if you cannot find ANY information about office hours or teaching.
-  Mark as "error" if you see conflicting information.
+  STATUS FIELD RULES:
+  - Mark as "validated" ONLY if you have externally confirmed SPECIFIC days, times, and locations for office hours.
+  - Mark as "found" if you find COMPLETE information (times + locations) for BOTH office hours AND teaching hours.
+  - Mark as "partial info found" if you find SOME information about EITHER office hours OR teaching hours, but not complete information for both.
+  - Mark as "not found" if you cannot find ANY information about office hours or teaching hours.
+  - Mark as "error" ONLY if you see conflicting/contradictory information.
   
   IMPORTANT: Your entire response must be valid JSON that can be parsed with JSON.parse(). Do not include any text outside of the JSON structure. Do not put the json in a code block.
   `;
-}
-
-// Helper to determine result status based on available information
-function determineResultStatus(result: any): OfficeHoursStatus {
-  const hasOfficeHours = result.times && result.times.trim() !== "";
-  const hasOfficeLocation = result.location && result.location.trim() !== "";
-  const hasTeachingHours = result.teachingHours && result.teachingHours.trim() !== "";
-  const hasTeachingLocation = result.teachingLocation && result.teachingLocation.trim() !== "";
-  
-  if (!hasOfficeHours && !hasOfficeLocation && !hasTeachingHours && !hasTeachingLocation) {
-    return OfficeHoursStatus.NOT_FOUND;
-  } else if (hasOfficeHours && hasOfficeLocation && hasTeachingHours && hasTeachingLocation) {
-    return OfficeHoursStatus.FOUND;
-  } else {
-    return OfficeHoursStatus.PARTIAL_INFO_FOUND;
-  }
 }
 
 // LangChain implementation for photo processing with combined search
@@ -729,20 +719,24 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         - comments: Any additional details about availability (e.g., "by appointment", "after lecture", "drop-in hours", etc.)
         - status: Either "not found", "found", "validated", "partial info found", or "error"
         
-        IMPORTANT FORMATTING INSTRUCTIONS:
-        - If there are multiple times and locations for either office hours or teaching, include the time with each location.
-          For example: "CDL room 110 (3:50-5:10 pm), CDL room 102 (5:40-7:00 pm)" instead of just "CDL room 110, CDL room 102"
-        - When there are both in-person and virtual locations, specify which days/times apply to each.
-          For example: "Room 102 (Wednesday 7:00-7:30 pm), Virtual via Zoom (Thursday and Sunday 8:00-9:00 pm)"
-        - Include day information along with times when different locations are used on different days
-        - Make sure to match each time/day with its corresponding location when listing multiple locations.
-        - In the "comments" field, include any additional contexts or instructions about how the professor makes themselves available (such as "by appointment only", "available after lectures", "drop-in hours", etc.)
-      
-        Only mark status as "validated" if you find SPECIFIC days, times, and locations for both office hours and teaching hours.
-        Mark as "found" if you find complete information that hasn't been externally validated.
-        Mark as "partial info found" if you find some information (like office hours but not teaching hours, or times but not locations).
-        Only mark as "not found" if you cannot find ANY information about office hours or teaching.
-        Mark as "error" if you see conflicting information.
+        IMPORTANT FORMAT REQUIREMENTS:
+        - For times, location, and teachingHours fields: ONLY include SPECIFIC information that you find.
+        - If you don't find exact times, use "Not specified" (don't include vague descriptions or estimates).
+        - If you don't find an exact location, use "Not specified" (don't guess or infer).
+        - If you find days but no times, include the days in the days array, but use "Not specified" for times.
+        - Do NOT include phrases like "Not explicitly stated but..." or similar approximations.
+        - For times and teachingHours, ALWAYS use one of these formats:
+           * "10:00 AM - 12:00 PM"
+           * "3:30 PM - 5:00 PM"
+           * "Not specified"
+        - For locations, ALWAYS use either a specific location or "Not specified".
+
+        STATUS FIELD RULES:
+        - Mark as "validated" ONLY if you have externally confirmed SPECIFIC days, times, and locations for office hours.
+        - Mark as "found" if you find COMPLETE information (times + locations) for BOTH office hours AND teaching hours.
+        - Mark as "partial info found" if you find SOME information about EITHER office hours OR teaching hours, but not complete information for both.
+        - Mark as "not found" if you cannot find ANY information about office hours or teaching hours.
+        - Mark as "error" ONLY if you see conflicting/contradictory information.
         
         IMPORTANT: Your entire response must be valid JSON that can be parsed with JSON.parse(). Do not include any text outside of the JSON structure. Do not put the json in a code block.
         `
@@ -802,18 +796,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         // Determine status based on available information, but preserve "validated" status from Exa AI
         let status = result.status;
         if (status !== OfficeHoursStatus.ERROR && status !== OfficeHoursStatus.VALIDATED) {
-          const hasOfficeHours = result.times && result.times.trim() !== "";
-          const hasOfficeLocation = result.location && result.location.trim() !== "";
-          const hasTeachingHours = result.teachingHours && result.teachingHours.trim() !== "";
-          const hasTeachingLocation = result.teachingLocation && result.teachingLocation.trim() !== "";
-          
-          if (!hasOfficeHours && !hasOfficeLocation && !hasTeachingHours && !hasTeachingLocation) {
-            status = OfficeHoursStatus.NOT_FOUND;
-          } else if (hasOfficeHours && hasOfficeLocation && hasTeachingHours && hasTeachingLocation) {
-            status = OfficeHoursStatus.FOUND; // Use "found" instead of "validated" for Perplexity results
-          } else {
-            status = OfficeHoursStatus.PARTIAL_INFO_FOUND;
-          }
+          status = determineResultStatus(result);
         }
         
         // Ensure these fields are never null in the final result
@@ -921,9 +904,20 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
             const teachingHourSlots = convertToTimeSlots([], result.teachingHours, result.teachingLocation, result.comments || undefined);
             
             // Success response
+            // Use determineResultStatus to get the status based on our rules
+            const internalStatus = determineResultStatus(result);
+            
+            // Map OfficeHoursStatus to BatchResponse status string
+            let apiStatus: "SUCCESS" | "PARTIAL_SUCCESS";
+            if (internalStatus === OfficeHoursStatus.FOUND) {
+              apiStatus = "SUCCESS";
+            } else {
+              apiStatus = "PARTIAL_SUCCESS";
+            }
+            
             response.results.push({
               contactId: instructor.contactId,
-              status: result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND ? "PARTIAL_SUCCESS" : "SUCCESS",
+              status: apiStatus,
               officeHours: officeHourSlots,
               teachingHours: teachingHourSlots,
               source: result.validatedBy || "web_search"
@@ -963,6 +957,9 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
     
     // Wait for all processing to complete
     await Promise.all(processingPromises);
+
+    // Apply validation logic to ensure consistent status
+    response.results = validateResultStatus(response.results);
     
     return response;
   } catch (error) {
