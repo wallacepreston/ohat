@@ -2,7 +2,8 @@ import {
   BatchRequest, 
   BatchResponse, 
   ProcessedOfficeHours,
-  BatchRequestInstructor
+  BatchRequestInstructor,
+  OfficeHoursStatus
 } from "@/types/salesforce";
 
 /**
@@ -92,14 +93,14 @@ export function convertBatchResponseToLegacy(
       instructor: instructorInfo ? instructorInfo.name : result.contactId,
       email: instructorInfo ? instructorInfo.email : "",
       institution: batchRequest ? batchRequest.institution : "",
-      course: instructorInfo ? instructorInfo.department : "",
+      course: instructorInfo?.department || "",
       days,
       times,
       location,
       teachingHours,
       teachingLocation,
       term: getCurrentSeason() + ' ' + new Date().getFullYear(),
-      status: result.status,
+      status: result.status as OfficeHoursStatus,
       validatedBy: result.source
     });
   }
@@ -113,14 +114,14 @@ export function convertBatchResponseToLegacy(
       instructor: instructorInfo ? instructorInfo.name : exception.contactId,
       email: instructorInfo ? instructorInfo.email : "",
       institution: batchRequest ? batchRequest.institution : "",
-      course: instructorInfo ? instructorInfo.department : "",
+      course: instructorInfo?.department || "",
       days: [],
       times: "",
       location: "",
       teachingHours: "",
       teachingLocation: "",
       term: getCurrentSeason() + ' ' + new Date().getFullYear(),
-      status: exception.status,
+      status: exception.status as OfficeHoursStatus,
       validatedBy: null
     });
   }
@@ -158,7 +159,7 @@ export function convertLegacyToBatchRequest(
     batchId,
     institution,
     instructors
-  };
+  } as BatchRequest;
 }
 
 /**

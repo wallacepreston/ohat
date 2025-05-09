@@ -4,7 +4,7 @@ import { OfficeHoursStatus } from "@/types/salesforce";
  * Determines the result status based on available office hours and teaching information.
  * 
  * Status logic:
- * - FOUND: Complete office hours information (with or without teaching info)
+ * - SUCCESS: Complete office hours information (with or without teaching info)
  * - PARTIAL_SUCCESS: Either partial office hours or any teaching info
  * - NOT_FOUND: No information at all
  */
@@ -49,11 +49,11 @@ export function determineResultStatus(result: any): OfficeHoursStatus {
   // Complete teaching info requires both time and location
   const hasCompleteTeachingHours = hasTeachingHours && hasTeachingLocation;
   
-  // If we have both complete office hours and complete teaching hours, it's FOUND
+  // If we have both complete office hours and complete teaching hours, it's SUCCESS
   if (hasCompleteOfficeHours && hasCompleteTeachingHours) {
     return OfficeHoursStatus.SUCCESS;
   } 
-  // If we have complete office hours (even without teaching hours), it's FOUND
+  // If we have complete office hours (even without teaching hours), it's SUCCESS
   else if (hasCompleteOfficeHours) {
     return OfficeHoursStatus.SUCCESS;
   }
