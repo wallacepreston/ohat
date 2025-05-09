@@ -146,8 +146,8 @@ type ProcessedOfficeHours {
 
 type OfficeHoursStatus = {
   VALIDATED = 'VALIDATED',
-  FOUND = 'FOUND',
-  PARTIAL_INFO_FOUND = 'PARTIAL_INFO_FOUND',
+  SUCCESS = 'SUCCESS',
+  PARTIAL_SUCCESS = 'PARTIAL_SUCCESS',
   NOT_FOUND = 'NOT_FOUND',
   ERROR = 'ERROR'
 } 

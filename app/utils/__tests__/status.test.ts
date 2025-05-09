@@ -2,76 +2,76 @@ import { OfficeHoursStatus } from "@/types/salesforce";
 import { determineResultStatus, validateResultStatus } from "../status";
 
 describe('determineResultStatus function', () => {
-  // Test FOUND status
-  it('should return FOUND when both office hours and teaching info are complete', () => {
+  // Test SUCCESS status
+  it('should return SUCCESS when both office hours and teaching info are complete', () => {
     const result = {
       times: "2:00 PM - 4:00 PM",
       location: "Room 101",
       teachingHours: "9:00 AM - 11:00 AM",
       teachingLocation: "Hall A"
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.SUCCESS);
   });
 
-  it('should return FOUND when only office hours info is complete (even without teaching info)', () => {
+  it('should return SUCCESS when only office hours info is complete (even without teaching info)', () => {
     const result = {
       times: "2:00 PM - 4:00 PM",
       location: "Room 101",
       teachingHours: "",
       teachingLocation: ""
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.SUCCESS);
   });
 
-  // Test PARTIAL_INFO_FOUND status
-  it('should return PARTIAL_INFO_FOUND when only teaching info is complete', () => {
+  // Test PARTIAL_SUCCESS status
+  it('should return PARTIAL_SUCCESS when only teaching info is complete', () => {
     const result = {
       times: "",
       location: "",
       teachingHours: "9:00 AM - 11:00 AM",
       teachingLocation: "Hall A"
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
   });
 
-  it('should return PARTIAL_INFO_FOUND when office hours info is incomplete (has time but no location)', () => {
+  it('should return PARTIAL_SUCCESS when office hours info is incomplete (has time but no location)', () => {
     const result = {
       times: "2:00 PM - 4:00 PM",
       location: "",
       teachingHours: "",
       teachingLocation: ""
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
   });
 
-  it('should return PARTIAL_INFO_FOUND when office hours info is incomplete (has location but no time)', () => {
+  it('should return PARTIAL_SUCCESS when office hours info is incomplete (has location but no time)', () => {
     const result = {
       times: "",
       location: "Room 101",
       teachingHours: "",
       teachingLocation: ""
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
   });
 
-  it('should return PARTIAL_INFO_FOUND when teaching info is incomplete (has time but no location)', () => {
+  it('should return PARTIAL_SUCCESS when teaching info is incomplete (has time but no location)', () => {
     const result = {
       times: "",
       location: "",
       teachingHours: "9:00 AM - 11:00 AM",
       teachingLocation: ""
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
   });
 
-  it('should return PARTIAL_INFO_FOUND when teaching info is incomplete (has location but no time)', () => {
+  it('should return PARTIAL_SUCCESS when teaching info is incomplete (has location but no time)', () => {
     const result = {
       times: "",
       location: "",
       teachingHours: "",
       teachingLocation: "Hall A"
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
   });
 
   // Test NOT_FOUND status
@@ -86,7 +86,7 @@ describe('determineResultStatus function', () => {
   });
 
   // Special case for the example provided
-  it('should return PARTIAL_INFO_FOUND for the specific example with only teaching info', () => {
+  it('should return PARTIAL_SUCCESS for the specific example with only teaching info', () => {
     const result = {
       instructor: "Wasserman, Eric H.",
       email: "ehw29@rutgers.edu",
@@ -100,7 +100,7 @@ describe('determineResultStatus function', () => {
       term: "Spring 2025",
       comments: "No specific office hours information found for Spring 2025. Teaching schedule is confirmed for recitations on Fridays. For office hours, please contact the instructor directly.",
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
   });
 
   // Tests for API response status mapping
@@ -155,7 +155,7 @@ describe('determineResultStatus function', () => {
       };
       
       // First, confirm the internal status is correct
-      expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+      expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
       
       // Then check the API response mapping
       const officeHourSlots = []; // No office hours
@@ -198,7 +198,7 @@ describe('determineResultStatus function', () => {
       term: "Spring 2025",
       comments: "Office hours days are listed as Tuesday and Thursday, but specific times and location are not provided. Teaching schedule is confirmed for recitations on Livingston Campus.",
     };
-    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+    expect(determineResultStatus(result)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
   });
 
   it('should handle vague descriptions correctly', () => {
@@ -226,8 +226,8 @@ describe('determineResultStatus function', () => {
     // Test each vague time string
     vagueTimes.forEach(vagueTime => {
       const testResult = {...baseResult, times: vagueTime};
-      // Since the location is valid but the time is vague/invalid, this should be PARTIAL_INFO_FOUND
-      expect(determineResultStatus(testResult)).toBe(OfficeHoursStatus.PARTIAL_INFO_FOUND);
+      // Since the location is valid but the time is vague/invalid, this should be PARTIAL_SUCCESS
+      expect(determineResultStatus(testResult)).toBe(OfficeHoursStatus.PARTIAL_SUCCESS);
     });
   });
 }); 
@@ -257,7 +257,7 @@ describe('validateResultStatus function', () => {
     expect(validatedResults[0].status).toBe("PARTIAL_SUCCESS");
   });
   
-  it('should change status to PARTIAL_SUCCESS when both arrays are empty', () => {
+  it('should change status to NOT_FOUND when both arrays are empty', () => {
     const mockResults = [{
       status: "SUCCESS",
       officeHours: [],
@@ -265,7 +265,7 @@ describe('validateResultStatus function', () => {
     }];
     
     const validatedResults = validateResultStatus(mockResults);
-    expect(validatedResults[0].status).toBe("PARTIAL_SUCCESS");
+    expect(validatedResults[0].status).toBe("NOT_FOUND");
   });
 
   // Test cases with undefined or null arrays

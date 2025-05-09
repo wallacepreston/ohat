@@ -851,8 +851,8 @@
             ],
             "enum": [
               "VALIDATED",
-              "FOUND",
-              "PARTIAL_INFO_FOUND",
+              "SUCCESS",
+              "PARTIAL_SUCCESS",
               "NOT_FOUND",
               "ERROR"
             ]
@@ -891,7 +891,7 @@
           "teachingHours": "MWF 11:00 AM - 12:15 PM",
           "teachingLocation": "Main Hall 105",
           "term": "Fall 2023",
-          "status": "FOUND",
+          "status": "SUCCESS",
           "validatedBy": null
         }
       },
@@ -899,8 +899,8 @@
         "type": "string",
         "enum": [
           "VALIDATED",
-          "FOUND",
-          "PARTIAL_INFO_FOUND",
+          "SUCCESS",
+          "PARTIAL_SUCCESS",
           "NOT_FOUND",
           "ERROR"
         ],

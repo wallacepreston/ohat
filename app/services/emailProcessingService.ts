@@ -25,8 +25,8 @@ const emailResponseSchema = z.object({
     // Transform string status to enum
     switch(val.toLowerCase()) {
       case 'validated': return OfficeHoursStatus.VALIDATED;
-      case 'found': return OfficeHoursStatus.FOUND;
-      case 'partial info found': return OfficeHoursStatus.PARTIAL_INFO_FOUND;
+      case 'found': return OfficeHoursStatus.SUCCESS;
+      case 'partial info found': return OfficeHoursStatus.PARTIAL_SUCCESS;
       case 'not found': return OfficeHoursStatus.NOT_FOUND;
       case 'error': return OfficeHoursStatus.ERROR;
       default: return OfficeHoursStatus.ERROR;

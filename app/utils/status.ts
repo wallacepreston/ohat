@@ -5,7 +5,7 @@ import { OfficeHoursStatus } from "@/types/salesforce";
  * 
  * Status logic:
  * - FOUND: Complete office hours information (with or without teaching info)
- * - PARTIAL_INFO_FOUND: Either partial office hours or any teaching info
+ * - PARTIAL_SUCCESS: Either partial office hours or any teaching info
  * - NOT_FOUND: No information at all
  */
 export function determineResultStatus(result: any): OfficeHoursStatus {
@@ -51,15 +51,15 @@ export function determineResultStatus(result: any): OfficeHoursStatus {
   
   // If we have both complete office hours and complete teaching hours, it's FOUND
   if (hasCompleteOfficeHours && hasCompleteTeachingHours) {
-    return OfficeHoursStatus.FOUND;
+    return OfficeHoursStatus.SUCCESS;
   } 
   // If we have complete office hours (even without teaching hours), it's FOUND
   else if (hasCompleteOfficeHours) {
-    return OfficeHoursStatus.FOUND;
+    return OfficeHoursStatus.SUCCESS;
   }
-  // If we have any valid information (partial office hours or any teaching info), it's PARTIAL_INFO_FOUND
+  // If we have any valid information (partial office hours or any teaching info), it's PARTIAL_SUCCESS
   else if (hasOfficeHours || hasOfficeLocation || hasTeachingHours || hasTeachingLocation) {
-    return OfficeHoursStatus.PARTIAL_INFO_FOUND;
+    return OfficeHoursStatus.PARTIAL_SUCCESS;
   }
   // If we have no information at all, it's NOT_FOUND
   else {
@@ -73,8 +73,17 @@ export function determineResultStatus(result: any): OfficeHoursStatus {
  */
 export function validateResultStatus(results: any[]): any[] {
   return results.map(result => {
-    if ((!result.teachingHours || !result.teachingHours.length) || (!result.officeHours || !result.officeHours.length)) {
+    if (result.teachingHours && result.teachingHours.length > 0 && result.officeHours && result.officeHours.length > 0) {
+      result.status = "SUCCESS";
+    }
+    else if (result.teachingHours && result.teachingHours.length > 0) {
       result.status = "PARTIAL_SUCCESS";
+    }
+    else if (result.officeHours && result.officeHours.length > 0) {
+      result.status = "PARTIAL_SUCCESS";
+    }
+    else {
+      result.status = "NOT_FOUND";
     }
     return result;
   });

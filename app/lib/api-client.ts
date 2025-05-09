@@ -2,7 +2,6 @@ import {
   BatchRequest, 
   BatchResponse, 
   ProcessedOfficeHours,
-  OfficeHoursStatus,
   BatchRequestInstructor
 } from "@/types/salesforce";
 
@@ -100,7 +99,7 @@ export function convertBatchResponseToLegacy(
       teachingHours,
       teachingLocation,
       term: getCurrentSeason() + ' ' + new Date().getFullYear(),
-      status: result.status === "SUCCESS" ? OfficeHoursStatus.FOUND : OfficeHoursStatus.PARTIAL_INFO_FOUND,
+      status: result.status,
       validatedBy: result.source
     });
   }
@@ -121,7 +120,7 @@ export function convertBatchResponseToLegacy(
       teachingHours: "",
       teachingLocation: "",
       term: getCurrentSeason() + ' ' + new Date().getFullYear(),
-      status: exception.status === "ERROR" ? OfficeHoursStatus.ERROR : OfficeHoursStatus.NOT_FOUND,
+      status: exception.status,
       validatedBy: null
     });
   }

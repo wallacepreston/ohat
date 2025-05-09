@@ -3,19 +3,10 @@ import { z } from 'zod';
 // Enums
 export enum OfficeHoursStatus {
   VALIDATED = 'VALIDATED',
-  FOUND = 'FOUND',
-  PARTIAL_INFO_FOUND = 'PARTIAL_INFO_FOUND',
+  SUCCESS = 'SUCCESS',
+  PARTIAL_SUCCESS = 'PARTIAL_SUCCESS',
   NOT_FOUND = 'NOT_FOUND',
   ERROR = 'ERROR'
-}
-
-// Helper functions
-export function formatStatus(status: OfficeHoursStatus): string {
-  return status
-    .toLowerCase()
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 }
 
 // Zod Schemas

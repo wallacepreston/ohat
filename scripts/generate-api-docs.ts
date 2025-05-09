@@ -71,7 +71,7 @@ const createProcessedOfficeHoursSchema = () => z.object({
   teachingHours: z.string(),
   teachingLocation: z.string(),
   term: z.string(),
-  status: z.enum(["VALIDATED", "FOUND", "PARTIAL_INFO_FOUND", "NOT_FOUND", "ERROR"]),
+  status: z.enum(["VALIDATED", "SUCCESS", "PARTIAL_SUCCESS", "NOT_FOUND", "ERROR"]),
   validatedBy: z.string().nullable().optional()
 });
 
@@ -248,13 +248,13 @@ function generateOpenApiSpec() {
             teachingHours: "MWF 11:00 AM - 12:15 PM",
             teachingLocation: "Main Hall 105",
             term: "Fall 2023",
-            status: "FOUND",
+            status: "SUCCESS",
             validatedBy: null
           }
         },
         OfficeHoursStatus: {
           type: 'string',
-          enum: ["VALIDATED", "FOUND", "PARTIAL_INFO_FOUND", "NOT_FOUND", "ERROR"],
+          enum: ["VALIDATED", "SUCCESS", "PARTIAL_SUCCESS", "NOT_FOUND", "ERROR"],
           description: 'Status of office hours search'
         }
       }

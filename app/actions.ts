@@ -52,8 +52,8 @@ const officeHoursSchema = z.object({
     // Transform string status to enum
     switch(val.toLowerCase()) {
       case 'validated': return OfficeHoursStatus.VALIDATED;
-      case 'found': return OfficeHoursStatus.FOUND;
-      case 'partial info found': return OfficeHoursStatus.PARTIAL_INFO_FOUND;
+      case 'found': return OfficeHoursStatus.SUCCESS;
+      case 'partial info found': return OfficeHoursStatus.PARTIAL_SUCCESS;
       case 'not found': return OfficeHoursStatus.NOT_FOUND;
       case 'error': return OfficeHoursStatus.ERROR;
       default: return OfficeHoursStatus.ERROR;
@@ -121,7 +121,7 @@ function determineInitialStatus(data: any): OfficeHoursStatus {
   
   // If we have Office_Hours__c, consider it partial info found
   if (hasOfficeHours) {
-    return OfficeHoursStatus.PARTIAL_INFO_FOUND;
+    return OfficeHoursStatus.PARTIAL_SUCCESS;
   } else {
     return OfficeHoursStatus.NOT_FOUND;
   }
@@ -144,7 +144,7 @@ const validateWithExaAI = async (result: ProcessedOfficeHours): Promise<Processe
   console.log("Result status:", result.status)
   
   // Skip validation if we don't have enough to validate
-  if (result.status !== OfficeHoursStatus.FOUND && result.status !== OfficeHoursStatus.PARTIAL_INFO_FOUND) {
+  if (result.status !== OfficeHoursStatus.SUCCESS && result.status !== OfficeHoursStatus.PARTIAL_SUCCESS) {
     console.log(`Result status is '${result.status}', skipping Exa validation`);
     return result;
   }
@@ -207,15 +207,13 @@ const validateWithExaAI = async (result: ProcessedOfficeHours): Promise<Processe
         // Check if at least one result validates or enhances our information
         const hasValidatingResults = data.results.some((result: { text: string, title: string }) => {
           const text = result.text || "";
-          const title = result.title || "";
           
           // Check if this result confirms our information
-          const hasInstructorName = text.includes(validatedResult.instructor);
           const hasOfficeHours = validatedResult.days.some(day => text.includes(day)) ||
                                 text.includes(validatedResult.times);
           const hasLocation = text.includes(validatedResult.location);
           
-          return hasInstructorName && (hasOfficeHours || hasLocation);
+          return (hasOfficeHours || hasLocation);
         });
         
         // Update status if validation successful
@@ -279,8 +277,8 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
         perplexityResults.map(async (result) => {
           try {
             // Only validate if we have found or partial results
-            if (result.status === OfficeHoursStatus.FOUND || 
-                result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
+            if (result.status === OfficeHoursStatus.SUCCESS || 
+                result.status === OfficeHoursStatus.PARTIAL_SUCCESS) {
               console.log(`Validating result for ${result.instructor} with Exa AI...`)
               // return await perplexityValidationChain.invoke(result)
               return result
@@ -759,7 +757,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
           
           // IMPORTANT: Change "validated" to "found" - we'll only use "validated" after Exa confirms
           if (result.status === OfficeHoursStatus.VALIDATED) {
-            result.status = OfficeHoursStatus.FOUND;
+            result.status = OfficeHoursStatus.SUCCESS;
           }
           
           return result;
@@ -895,9 +893,9 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
           const result = results[0];
           
           // Determine if this was successful
-          if (result.status === OfficeHoursStatus.FOUND || 
+          if (result.status === OfficeHoursStatus.SUCCESS || 
               result.status === OfficeHoursStatus.VALIDATED || 
-              result.status === OfficeHoursStatus.PARTIAL_INFO_FOUND) {
+              result.status === OfficeHoursStatus.PARTIAL_SUCCESS) {
             
             // Convert to the new time slot format
             const officeHourSlots = convertToTimeSlots(result.days, result.times, result.location, result.comments || undefined);
@@ -909,7 +907,7 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
             
             // Map OfficeHoursStatus to BatchResponse status string
             let apiStatus: "SUCCESS" | "PARTIAL_SUCCESS";
-            if (internalStatus === OfficeHoursStatus.FOUND) {
+            if (internalStatus === OfficeHoursStatus.SUCCESS) {
               apiStatus = "SUCCESS";
             } else {
               apiStatus = "PARTIAL_SUCCESS";

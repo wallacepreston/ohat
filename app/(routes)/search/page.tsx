@@ -132,8 +132,8 @@ export default function SearchPage() {
     
     // Calculate counts for each status type based on the provided data
     const validatedCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
-    const foundCount = data.filter(item => item.status === OfficeHoursStatus.FOUND).length
-    const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_INFO_FOUND).length
+    const foundCount = data.filter(item => item.status === OfficeHoursStatus.SUCCESS).length
+    const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_SUCCESS).length
     const notFoundCount = data.filter(item => item.status === OfficeHoursStatus.NOT_FOUND).length
     const errorCount = data.filter(item => item.status === OfficeHoursStatus.ERROR).length
     

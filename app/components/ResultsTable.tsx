@@ -3,7 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { ProcessedOfficeHours } from "@/types/salesforce"
-import { OfficeHoursStatus, formatStatus } from "@/types/salesforce"
+import { getStatusClass, formatStatus, renderStatusIcon } from "./ui/statusRenderers"
 
 interface ResultsTableProps {
   results: ProcessedOfficeHours[]
@@ -11,21 +11,6 @@ interface ResultsTableProps {
 }
 
 export default function ResultsTable({ results, onClearResults }: ResultsTableProps) {
-  // Function to generate status styling class
-  const getStatusClass = (status: OfficeHoursStatus) => {
-    switch(status) {
-      case OfficeHoursStatus.VALIDATED:
-        return "text-green-600 font-bold";
-      case OfficeHoursStatus.FOUND:
-        return "text-green-600";
-      case OfficeHoursStatus.NOT_FOUND:
-        return "text-yellow-600";
-      case OfficeHoursStatus.PARTIAL_INFO_FOUND:
-        return "text-blue-600";
-      default:
-        return "text-red-600";
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -77,9 +62,7 @@ export default function ResultsTable({ results, onClearResults }: ResultsTablePr
                 <TableCell>
                   <span className={getStatusClass(result.status)}>
                     {formatStatus(result.status)}
-                    {result.validatedBy && (
-                      <span className="ml-1 text-xs">✓</span>
-                    )}
+                    {renderStatusIcon(result.status)}
                   </span>
                 </TableCell>
               </TableRow>

@@ -118,7 +118,7 @@ export const runtime = 'nodejs'; // Use Node.js runtime (default, but explicit h
  *           description: Academic term
  *         status:
  *           type: string
- *           enum: [VALIDATED, FOUND, PARTIAL_INFO_FOUND, NOT_FOUND, ERROR]
+ *           enum: [VALIDATED, SUCCESS, PARTIAL_SUCCESS, NOT_FOUND, ERROR]
  *           description: Status of the office hours search
  *         validatedBy:
  *           type: string
