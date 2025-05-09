@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { processOfficeHours } from "@/app/actions"
-import type { ProcessedOfficeHours } from "@/types/salesforce"
+import type { ProcessedOfficeHours, BatchRequest, BatchRequestInstructor } from "@/types/salesforce"
 import { OfficeHoursStatus } from "@/types/salesforce"
 import { useStatus } from "@/app/context/StatusContext"
 import { useLoading } from "@/app/context/LoadingContext"
@@ -110,8 +110,14 @@ export default function UploadPage() {
           data = await processPhotoUpload(batchRequest, photoFile)
         } else {
           // Use batch API for non-photo requests
-          const batchResponse = await processBatchOfficeHours(batchRequest)
-          data = convertBatchResponseToLegacy(batchResponse, batchRequest)
+          const typedRequest: BatchRequest = {
+            batchId: batchRequest.batchId,
+            accountId: batchRequest.accountId,
+            institution: batchRequest.institution,
+            instructors: batchRequest.instructors as [BatchRequestInstructor, ...BatchRequestInstructor[]]
+          }
+          const batchResponse = await processBatchOfficeHours(typedRequest)
+          data = convertBatchResponseToLegacy(batchResponse, typedRequest)
         }
       } catch (error) {
         console.warn("API failed, falling back to legacy API:", error)
