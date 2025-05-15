@@ -17,6 +17,7 @@ export default function UploadPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [institution, setInstitution] = useState<string>("")
   const [instructorName, setInstructorName] = useState<string>("")
+  const [contactId, setContactId] = useState<string>("")
   const [photoInputDirty, setPhotoInputDirty] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { addStatusMessage, clearStatusMessages } = useStatus()
@@ -84,7 +85,7 @@ export default function UploadPage() {
         institution: institution.trim(),
         instructors: [
           {
-            contactId: `contact-${Date.now()}`,
+            contactId: contactId.trim() || `contact-${Date.now()}`,
             name: instructorName.trim(),
             email: "", // Add empty email field to satisfy the type
             department: "" // Add empty department field to satisfy the type
@@ -281,11 +282,28 @@ export default function UploadPage() {
               className="w-full"
             />
           </div>
+          
+          <div className="space-y-3">
+            <Label htmlFor="contact-id" className="flex items-center text-base">
+              Contact ID
+              <span className="text-red-500 ml-1">*</span>
+            </Label>
+            <Input
+              id="contact-id"
+              value={contactId}
+              onChange={(e) => setContactId(e.target.value)}
+              placeholder="Enter Salesforce contact ID"
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Salesforce Contact ID for this instructor if available
+            </p>
+          </div>
         </div>
         
         <Button 
           type="submit" 
-          disabled={isLoading || !photoFile || !institution || !instructorName}
+          disabled={isLoading || !photoFile || !institution || !instructorName || !contactId}
           className="w-full mt-4"
         >
           {isLoading ? "Processing..." : "Process Photo and Data"}
