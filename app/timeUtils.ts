@@ -13,6 +13,39 @@ interface TimeParseResult {
 }
 
 /**
+ * Orders an array of days of the week according to the standard sequence
+ * starting with Monday and ending with Friday (excluding weekend days)
+ * @param days Array of day names to sort (case insensitive)
+ * @returns Ordered array of day names in the original case, with weekends filtered out
+ */
+export function orderDaysOfWeek(days: string[]): string[] {
+  if (!days || days.length === 0) {
+    return [];
+  }
+
+  const dayOrder: Record<string, number> = {
+    'monday': 0,
+    'tuesday': 1,
+    'wednesday': 2,
+    'thursday': 3,
+    'friday': 4
+  };
+
+  // Filter out weekend days (Saturday and Sunday)
+  const weekdaysOnly = days.filter(day => {
+    const lowercase = day.toLowerCase();
+    return lowercase !== 'saturday' && lowercase !== 'sunday';
+  });
+
+  // Create a copy of the array to avoid mutating the original
+  return [...weekdaysOnly].sort((a, b) => {
+    const aIndex = dayOrder[a.toLowerCase()] ?? 999; // Unknown days go to the end
+    const bIndex = dayOrder[b.toLowerCase()] ?? 999;
+    return aIndex - bIndex;
+  });
+}
+
+/**
  * Parse a time string into hours, minutes, and AM/PM components
  * Returns an object with success status and the parsed time slot (if successful)
  */
