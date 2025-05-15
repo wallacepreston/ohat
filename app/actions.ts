@@ -33,6 +33,7 @@ const salesforceDataSchema = z.object({
   School_Course_Name__c: z.string().optional(),
   Is_Teaching__c: z.boolean().optional(),
   Division: z.string().optional(),
+  Decision_Maker_Type__c: z.string().optional(),
 })
 
 // Define the schema for structured output from AI processing
@@ -257,12 +258,13 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
       // Get initial results from Perplexity search
       const perplexityResults = await searchWithPerplexity(item)
       
-      // Queue SQS message for any instructors with NOT_FOUND status
+      // Queue SQS message for key decision makers with NOT_FOUND status
       for (const result of perplexityResults) {
         if (result.status === 'NOT_FOUND' && 
             item.Contact_Name__c && 
-            item.Contact_Email__c) {
-          console.log(`Queueing crawl for instructor with no office hours: ${item.Contact_Name__c}`)
+            item.Contact_Email__c &&
+            item.Decision_Maker_Type__c === 'YES') {
+          console.log(`Queueing crawl for key decision maker with no office hours: ${item.Contact_Name__c}`)
           await queueInstructorCrawl(
             item.Account_ID__c || item.Contact_Name__c, 
             item.Contact_Name__c,
@@ -336,11 +338,12 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
       if (photo && parsedData.length > 0) {
         const results = await processPhotoWithLangChain(parsedData[0], photo)
         
-        // Queue SQS message if photo processing didn't find office hours
+        // Queue SQS message if photo processing didn't find office hours AND instructor is a key decision maker
         if (results.length > 0 && 
             results[0].status === 'NOT_FOUND' && 
-            parsedData[0].Contact_Email__c) {
-          console.log(`Queueing crawl for instructor with no office hours found in photo: ${results[0].instructor}`)
+            parsedData[0].Contact_Email__c &&
+            parsedData[0].Decision_Maker_Type__c === 'YES') {
+          console.log(`Queueing crawl for key decision maker with no office hours found in photo: ${results[0].instructor}`)
           await queueInstructorCrawl(
             parsedData[0].Account_ID__c || results[0].instructor, 
             results[0].instructor,
@@ -363,11 +366,12 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
       if (photo) {
         const results = await processPhotoWithLangChain(parsedData, photo)
         
-        // Queue SQS message if photo processing didn't find office hours
+        // Queue SQS message if photo processing didn't find office hours AND instructor is a key decision maker
         if (results.length > 0 && 
             results[0].status === 'NOT_FOUND' && 
-            parsedData.Contact_Email__c) {
-          console.log(`Queueing crawl for instructor with no office hours found in photo: ${results[0].instructor}`)
+            parsedData.Contact_Email__c &&
+            parsedData.Decision_Maker_Type__c === 'YES') {
+          console.log(`Queueing crawl for key decision maker with no office hours found in photo: ${results[0].instructor}`)
           await queueInstructorCrawl(
             parsedData.Account_ID__c || results[0].instructor, 
             results[0].instructor,
@@ -985,21 +989,14 @@ function getActionTaken(
   instructor: BatchRequestInstructor, 
   result: ProcessedOfficeHours
 ): "NONE" | "EMAIL_SENT" | "CRAWL_QUEUED" {
-  // If instructor is a key decision maker with a valid email, we queue a crawl
+  // Only queue crawls or send emails for key decision makers
   if (instructor.isKeyDecisionMaker && instructor.email && instructor.email.includes('@')) {
-    // This would normally trigger an actual crawl, but for now we'll just indicate it
-    console.log(`Would queue crawl for key decision maker: ${instructor.name}`);
-    return "CRAWL_QUEUED";
-  }
-  
-  // If we have an email address, we'll send an email
-  if (instructor.email && instructor.email.includes('@')) {
-    // This would normally trigger an email, but for now we'll just indicate it
-    console.log(`Would send email to instructor: ${instructor.email}`);
+    // Queue email to key decision makers with valid emails
+    console.log(`Would queue email to key decision maker: ${instructor.name}`);
     return "EMAIL_SENT";
   }
   
-  // Default action
+  // No action for non-key decision makers or those without emails
   return "NONE";
 }
 
