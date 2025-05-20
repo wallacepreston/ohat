@@ -121,26 +121,28 @@
             ]
           },
           "email": {
+            "default": "",
             "type": [
-              "string"
+              "string",
+              "null"
             ]
           },
           "department": {
             "type": [
-              "string"
+              "string",
+              "null"
             ]
           },
           "isKeyDecisionMaker": {
             "type": [
-              "boolean"
+              "boolean",
+              "null"
             ]
           }
         },
         "required": [
           "contactId",
-          "name",
-          "email",
-          "department"
+          "name"
         ],
         "example": {
           "contactId": "00301000ABCDEF",
@@ -190,26 +192,28 @@
                   ]
                 },
                 "email": {
+                  "default": "",
                   "type": [
-                    "string"
+                    "string",
+                    "null"
                   ]
                 },
                 "department": {
                   "type": [
-                    "string"
+                    "string",
+                    "null"
                   ]
                 },
                 "isKeyDecisionMaker": {
                   "type": [
-                    "boolean"
+                    "boolean",
+                    "null"
                   ]
                 }
               },
               "required": [
                 "contactId",
-                "name",
-                "email",
-                "department"
+                "name"
               ]
             },
             "minItems": 1
@@ -796,8 +800,10 @@
             ]
           },
           "email": {
+            "default": "",
             "type": [
-              "string"
+              "string",
+              "null"
             ]
           },
           "institution": {
@@ -866,7 +872,6 @@
         },
         "required": [
           "instructor",
-          "email",
           "institution",
           "course",
           "days",

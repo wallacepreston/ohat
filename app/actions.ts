@@ -39,7 +39,7 @@ const salesforceDataSchema = z.object({
 // Define the schema for structured output from AI processing
 const officeHoursSchema = z.object({
   instructor: z.string(),
-  email: z.string().nullable().default(""),
+  email: z.string().optional().nullable().default(""),
   institution: z.string(),
   course: z.string(),
   days: z.array(z.string()).nullable().default([]),

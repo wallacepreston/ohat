@@ -28,7 +28,7 @@ export const TimeSlotSchema = z.object({
 export const BatchRequestInstructorSchema = z.object({
   contactId: z.string(),
   name: z.string(),
-  email: z.string().email().or(z.literal("")),
+  email: z.string().optional().nullable().default(""),
   department: z.string().optional().nullable(),
   isKeyDecisionMaker: z.boolean().optional().nullable()
 });
@@ -69,7 +69,7 @@ export const BatchResponseSchema = z.object({
 // ProcessedOfficeHours schema
 export const ProcessedOfficeHoursSchema = z.object({
   instructor: z.string(),
-  email: z.string(),
+  email: z.string().optional().nullable().default(""),
   institution: z.string(),
   course: z.string(),
   days: z.array(z.string()),

@@ -23,7 +23,7 @@ const createTimeSlotSchema = () => z.object({
 const createBatchRequestInstructorSchema = () => z.object({
   contactId: z.string(),
   name: z.string(),
-  email: z.string(),
+  email: z.string().optional().nullable().default(""),
   department: z.string().optional().nullable(),
   isKeyDecisionMaker: z.boolean().optional().nullable()
 });
@@ -62,7 +62,7 @@ const createBatchResponseSchema = (
 
 const createProcessedOfficeHoursSchema = () => z.object({
   instructor: z.string(),
-  email: z.string(),
+  email: z.string().optional().nullable().default(""),
   institution: z.string(),
   course: z.string(),
   days: z.array(z.string()),
