@@ -18,6 +18,14 @@ export interface InstructorEmailTemplateData {
 }
 
 /**
+ * Determines whether to send emails (not necessarily to real recipients)
+ * @returns boolean indicating if emails should be sent
+ */
+function sendEmailEnabled(): boolean {
+  return process.env.SENDGRID_SEND_EMAILS_ENABLED === 'true';
+}
+
+/**
  * Determines whether to send emails to real recipients or to the test email
  * @returns boolean indicating if real emails should be sent
  */
@@ -70,12 +78,16 @@ export async function sendTemplateEmail(
       dynamicTemplateData: enhancedData,
     };
     
+    if (!sendEmailEnabled()) {
+      console.log(`✅ SENDING DISABLED: Email intended for ${to} would have been sent to ${actualRecipient} using template ${templateId}`);
+      return true;
+    }
     await sgMail.send(msg);
     
     if (shouldSendRealEmails()) {
-      console.log(`Email sent successfully to ${to} using template ${templateId}`);
+      console.log(`✅ Email sent successfully to ${to} using template ${templateId}`);
     } else {
-      console.log(`Email intended for ${to} redirected to ${actualRecipient} (template: ${templateId})`);
+      console.log(`✅ QA MODE: Email intended for ${to} redirected to ${actualRecipient} (template: ${templateId})`);
     }
     
     return true;

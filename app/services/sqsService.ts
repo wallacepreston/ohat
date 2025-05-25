@@ -130,7 +130,6 @@ export async function readInstructorCrawlMessages(
             QueueUrl: process.env.EMAIL_QUEUE_URL || '',
             ReceiptHandle: message.ReceiptHandle || ''
           }));
-          console.log(`✅ Email sent to instructor: ${messageBody.instructorName} <${messageBody.email}> at ${messageBody.institution}`);
           console.log(`Deleted message ${message.MessageId} from queue after processing.`);
         } else {
           console.log(`❌ Failed to send email to: ${messageBody.email}. Will retry later.`);

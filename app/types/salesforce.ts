@@ -1,4 +1,4 @@
-import { OfficeHoursStatus } from "@/types/salesforce-enums"
+import { OfficeHoursStatus } from "@/types/salesforce";
 
 export interface ProcessedOfficeHours {
   instructor: string;

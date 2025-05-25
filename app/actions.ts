@@ -306,20 +306,7 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
     console.error("Error in processMultipleWithPerplexity:", error)
     
     // Return basic error results for each instructor
-    return instructorDataArray.map(data => ({
-      instructor: data.Contact_Name__c || "Unknown Instructor",
-      email: data.Contact_Email__c || "",
-      institution: data.Account_Name__c || "Unknown Institution",
-      course: data.School_Course_Name__c || data.Division || "Unknown Course",
-      days: [],
-      times: "",
-      location: "",
-      teachingHours: "",
-      teachingLocation: "",
-      term: getCurrentSeason() + " " + new Date().getFullYear(),
-      comments: "",
-      status: OfficeHoursStatus.ERROR
-    }));
+    return instructorDataArray.map(createErrorResult);
   }
 }
 
@@ -536,7 +523,12 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
       location: result.location || "",
       teachingHours: result.teachingHours || "",
       teachingLocation: result.teachingLocation || "",
-      status: status
+      status: status,
+      salesforce: {
+        contactHourId: "",
+        created: false,
+        error: ""
+      }
     };
 
     return [processedResult];
@@ -554,7 +546,12 @@ async function searchWithPerplexity(searchData: any): Promise<ProcessedOfficeHou
       teachingLocation: "",
       term: getCurrentSeason() + " " + new Date().getFullYear(),
       comments: "",
-      status: OfficeHoursStatus.ERROR
+      status: OfficeHoursStatus.ERROR,
+      salesforce: {
+        contactHourId: "",
+        created: false,
+        error: "Error processing instructor data"
+      }
     }];
   }
 }
@@ -874,7 +871,12 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         status: OfficeHoursStatus.ERROR,
         course: "",
         term: "",
-        comments: ""
+        comments: "",
+        salesforce: {
+          contactHourId: "",
+          created: false,
+          error: "Error processing instructor data"
+        }
       }]
     }
   } catch (error) {
@@ -891,7 +893,12 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
       teachingLocation: "",
       term: getCurrentSeason() + " " + new Date().getFullYear(),
       comments: "",
-      status: OfficeHoursStatus.ERROR
+      status: OfficeHoursStatus.ERROR,
+      salesforce: {
+        contactHourId: "",
+        created: false,
+        error: "Error processing instructor data"
+      }
     }]
   }
 }
@@ -1162,4 +1169,27 @@ function getDayOrder(dayString: string): number {
   }
   
   return dayOrder[dayString.toLowerCase()] ?? 999;
+}
+
+// Helper function to create error result
+function createErrorResult(data: any) {
+  return {
+    instructor: data.Contact_Name__c || "Unknown Instructor",
+    email: data.Contact_Email__c || "",
+    institution: data.Account_Name__c || "Unknown Institution",
+    course: data.School_Course_Name__c || data.Division || "Unknown Course",
+    days: [],
+    times: "",
+    location: "",
+    teachingHours: "",
+    teachingLocation: "",
+    term: getCurrentSeason() + " " + new Date().getFullYear(),
+    comments: "",
+    status: OfficeHoursStatus.ERROR,
+    salesforce: {
+      contactHourId: "",
+      created: false,
+      error: "Error processing instructor data"
+    }
+  };
 }

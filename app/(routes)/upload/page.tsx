@@ -154,7 +154,7 @@ export default function UploadPage() {
     
     // Calculate Salesforce statistics
     const salesforceCreatedCount = data.filter(item => item.salesforce?.created).length
-    const salesforceErrorCount = data.filter(item => item.salesforce && !item.salesforce.created).length
+    const salesforceError = data.find(item => item.salesforce && !item.salesforce.created)?.salesforce?.error
     
     // Add a message for each status type with results
     if (validatedCount > 0) {
@@ -179,11 +179,11 @@ export default function UploadPage() {
 
     // Add Salesforce status messages
     if (salesforceCreatedCount > 0) {
-      addStatusMessage('success', `Created ${salesforceCreatedCount} Salesforce Contact Hour record(s)`)
+      addStatusMessage('success', 'Created Salesforce Contact Hour record')
     }
     
-    if (salesforceErrorCount > 0) {
-      addStatusMessage('error', `Failed to create ${salesforceErrorCount} Salesforce Contact Hour record(s)`)
+    if (salesforceError) {
+      addStatusMessage('error', `Failed to create Salesforce Contact Hour record: ${salesforceError}`)
     }
   };
 
