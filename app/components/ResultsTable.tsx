@@ -8,14 +8,18 @@ import { getStatusClass, formatStatus, renderStatusIcon } from "./ui/statusRende
 interface ResultsTableProps {
   results: ProcessedOfficeHours[]
   onClearResults?: () => void
+  renderAdditionalInfo?: (result: ProcessedOfficeHours) => React.ReactNode
 }
 
-export default function ResultsTable({ results, onClearResults }: ResultsTableProps) {
+export default function ResultsTable({ results, onClearResults, renderAdditionalInfo }: ResultsTableProps) {
+  if (results.length === 0) {
+    return null;
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Results</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Results</h2>
         {results.length > 0 && onClearResults && (
           <Button 
             variant="outline" 
@@ -55,10 +59,30 @@ export default function ResultsTable({ results, onClearResults }: ResultsTablePr
                 <TableCell>{result.institution}</TableCell>
                 <TableCell>{result.course}</TableCell>
                 <TableCell>{result.term}</TableCell>
-                <TableCell>{result.times}</TableCell>
-                <TableCell>{result.location}</TableCell>
-                <TableCell>{result.teachingHours}</TableCell>
-                <TableCell>{result.teachingLocation}</TableCell>
+                <TableCell>
+                  <div>
+                    {result.days.length > 0 ? (
+                      <>
+                        <div>{result.days.join(", ")}</div>
+                        <div>{result.times}</div>
+                        <div>{result.location}</div>
+                      </>
+                    ) : (
+                      "No office hours found"
+                    )}
+                    {renderAdditionalInfo && renderAdditionalInfo(result)}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {result.teachingHours ? (
+                    <>
+                      <div>{result.teachingHours}</div>
+                      <div>{result.teachingLocation}</div>
+                    </>
+                  ) : (
+                    "No teaching hours found"
+                  )}
+                </TableCell>
                 <TableCell>
                   <span className={getStatusClass(result.status)}>
                     {formatStatus(result.status)}
@@ -108,30 +132,37 @@ export default function ResultsTable({ results, onClearResults }: ResultsTablePr
               )}
               
               {/* Office Hours info */}
-              {result.times && (
+              {result.days.length > 0 ? (
+                <>
+                  <div className="text-sm">
+                    <span className="font-medium">Office Hours:</span> {result.days.join(", ")}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Office Hours:</span> {result.times}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Office Location:</span> {result.location}
+                  </div>
+                </>
+              ) : (
                 <div className="text-sm">
-                  <span className="font-medium">Office Hours:</span> {result.times}
-                </div>
-              )}
-              
-              {/* Office Location info */}
-              {result.location && (
-                <div className="text-sm">
-                  <span className="font-medium">Office Location:</span> {result.location}
+                  <span className="font-medium">Office Hours:</span> No office hours found
                 </div>
               )}
               
               {/* Teaching Hours info */}
-              {result.teachingHours && (
+              {result.teachingHours ? (
+                <>
+                  <div className="text-sm">
+                    <span className="font-medium">Teaching Hours:</span> {result.teachingHours}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Teaching Location:</span> {result.teachingLocation}
+                  </div>
+                </>
+              ) : (
                 <div className="text-sm">
-                  <span className="font-medium">Teaching Hours:</span> {result.teachingHours}
-                </div>
-              )}
-              
-              {/* Teaching Location info */}
-              {result.teachingLocation && (
-                <div className="text-sm">
-                  <span className="font-medium">Teaching Location:</span> {result.teachingLocation}
+                  <span className="font-medium">Teaching Hours:</span> No teaching hours found
                 </div>
               )}
             </div>

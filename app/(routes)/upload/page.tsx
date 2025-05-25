@@ -152,6 +152,10 @@ export default function UploadPage() {
     const notFoundCount = data.filter(item => item.status === OfficeHoursStatus.NOT_FOUND).length
     const errorCount = data.filter(item => item.status === OfficeHoursStatus.ERROR).length
     
+    // Calculate Salesforce statistics
+    const salesforceCreatedCount = data.filter(item => item.salesforce?.created).length
+    const salesforceErrorCount = data.filter(item => item.salesforce && !item.salesforce.created).length
+    
     // Add a message for each status type with results
     if (validatedCount > 0) {
       addStatusMessage('success', `Validated ${validatedCount} instructor(s)`)
@@ -171,6 +175,15 @@ export default function UploadPage() {
     
     if (errorCount > 0) {
       addStatusMessage('error', `Error processing ${errorCount} instructor(s)`)
+    }
+
+    // Add Salesforce status messages
+    if (salesforceCreatedCount > 0) {
+      addStatusMessage('success', `Created ${salesforceCreatedCount} Salesforce Contact Hour record(s)`)
+    }
+    
+    if (salesforceErrorCount > 0) {
+      addStatusMessage('error', `Failed to create ${salesforceErrorCount} Salesforce Contact Hour record(s)`)
     }
   };
 
@@ -313,6 +326,26 @@ export default function UploadPage() {
       <ResultsTable 
         results={results}
         onClearResults={clearResults}
+        renderAdditionalInfo={(result) => {
+          if (!result.salesforce) return null;
+          
+          return (
+            <div className="mt-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Salesforce:</span>
+                {result.salesforce.created ? (
+                  <span className="text-green-600">
+                    Contact Hour created (ID: {result.salesforce.contactHourId})
+                  </span>
+                ) : (
+                  <span className="text-red-600">
+                    Failed to create Contact Hour: {result.salesforce.error}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        }}
       />
     </div>
   )

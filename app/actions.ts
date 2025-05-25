@@ -17,6 +17,8 @@ import { RunnableSequence, RunnableLambda } from "@langchain/core/runnables"
 import { StringOutputParser } from "@langchain/core/output_parsers"
 import { queueInstructorCrawl } from "@/app/services/sqsService"
 import { parseTimeString, orderDaysOfWeek } from "./timeUtils"
+import { salesforceService } from "@/app/services/salesforceService"
+import { ContactHourObject } from "@/app/types/salesforce-contact"
 
 // Define the schema for raw Salesforce input data
 const salesforceDataSchema = z.object({
@@ -380,8 +382,43 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
           )
         }
         
-        // Apply the same validation logic to photo results
-        return validateResultStatus(results);
+        // Apply validation logic to photo results
+        const validatedResults = validateResultStatus(results);
+        
+        // Create Contact Hour record in Salesforce for each result
+        for (const result of validatedResults) {
+          if (result.status === OfficeHoursStatus.SUCCESS || 
+              result.status === OfficeHoursStatus.PARTIAL_SUCCESS || 
+              result.status === OfficeHoursStatus.VALIDATED) {
+
+            const contactId = parsedData?.instructors[0]?.contactId;
+            if (!contactId) {
+              throw new Error("Contact ID not found in Salesforce data")
+            }
+            
+            try {
+              const contactHourId = await salesforceService.createContactHour(contactId, result);
+              console.log(`Created Contact Hour record for ${result.instructor}`);
+              
+              // Add Salesforce information to the result
+              result.salesforce = {
+                contactHourId,
+                created: true
+              };
+            } catch (error) {
+              console.error(`Failed to create Contact Hour record for ${result.instructor}:`, error);
+              
+              // Add error information to the result
+              result.salesforce = {
+                contactHourId: "",
+                created: false,
+                error: error instanceof Error ? error.message : "Unknown error occurred"
+              };
+            }
+          }
+        }
+        
+        return validatedResults;
       } else {
         // Process the single record as an array of one
         const results = await processMultipleWithPerplexity([parsedData])

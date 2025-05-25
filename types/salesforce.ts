@@ -80,7 +80,12 @@ export const ProcessedOfficeHoursSchema = z.object({
   term: z.string(),
   comments: z.string().nullable().optional(),
   status: z.nativeEnum(OfficeHoursStatus),
-  validatedBy: z.string().nullable().optional()
+  validatedBy: z.string().nullable().optional(),
+  salesforce: z.object({
+    contactHourId: z.string().nullable().optional(),
+    created: z.boolean().nullable().optional(),
+    error: z.string().nullable().optional()
+  })
 });
 
 // SalesforceData schema
