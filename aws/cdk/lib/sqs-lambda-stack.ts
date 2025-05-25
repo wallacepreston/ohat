@@ -76,7 +76,7 @@ export class SqsLambdaStack extends cdk.Stack {
     }
 
     // Create a Lambda function that will be triggered by SQS messages
-    const sqsProcessorLambda = new lambda.Function(this, 'SqsProcessorLambda', {
+    const sqsProcessorLambda = new lambda.Function(this, 'OHATInstructorEmailProcessor', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'sqs-processor.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
