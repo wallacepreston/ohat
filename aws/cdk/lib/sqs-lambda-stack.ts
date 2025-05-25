@@ -52,7 +52,7 @@ export class SqsLambdaStack extends cdk.Stack {
         console.error('Error importing existing queue, creating a new one:', error);
         // Fall back to creating a new queue if import fails
         queue = new sqs.Queue(this, 'InstructorCrawlQueue', {
-          visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
+          visibilityTimeout: cdk.Duration.seconds(60), // Match Lambda timeout
           retentionPeriod: cdk.Duration.days(14),
         });
         
@@ -64,7 +64,7 @@ export class SqsLambdaStack extends cdk.Stack {
     } else {
       // Create a new SQS queue if none exists
       queue = new sqs.Queue(this, 'InstructorCrawlQueue', {
-        visibilityTimeout: cdk.Duration.seconds(300), // 5 minutes
+        visibilityTimeout: cdk.Duration.seconds(60), // Match Lambda timeout
         retentionPeriod: cdk.Duration.days(14),
       });
       

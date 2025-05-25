@@ -29,38 +29,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # - name: Clean up existing CDK resources
-      #   run: |
-      #     echo "Cleaning up existing CDK resources..."
-      #     # Try to delete the S3 bucket if it exists
-      #     aws s3 rb s3://cdk-hnb659fds-assets-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} --force || true
-          
-      #     # Try to delete existing CDK roles
-      #     aws iam delete-role --role-name cdk-hnb659fds-image-publishing-role-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} || true
-      #     aws iam delete-role --role-name cdk-hnb659fds-file-publishing-role-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} || true
-      #     aws iam delete-role --role-name cdk-hnb659fds-cfn-exec-role-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} || true
-      #     aws iam delete-role --role-name cdk-hnb659fds-lookup-role-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} || true
-          
-      #     # Wait a bit for resources to be fully deleted
-      #     sleep 10
-      #   env:
-      #     AWS_REGION: ${{ secrets.AWS_REGION }}
-      #     AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-
       - name: Install dependencies
         run: npm ci
         working-directory: ./aws/cdk
 
-      - name: Bootstrap CDK environment
-        run: |
-          echo "Bootstrapping AWS environment in region ${{ secrets.AWS_REGION }}..."
-          npx cdk bootstrap "aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}" --force
-        working-directory: ./aws/cdk
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-          CDK_DEPLOY_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
-          CDK_DEPLOY_REGION: ${{ secrets.AWS_REGION }}
+      # # KEEP COMMENTED OUT FOR FUTURE REFERENCE
+      # - name: Bootstrap CDK environment
+      #   run: |
+      #     echo "Bootstrapping AWS environment in region ${{ secrets.AWS_REGION }}..."
+      #     npx cdk bootstrap "aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}" --force
+      #   working-directory: ./aws/cdk
+      #   env:
+      #     AWS_REGION: ${{ secrets.AWS_REGION }}
+      #     AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      #     CDK_DEPLOY_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+      #     CDK_DEPLOY_REGION: ${{ secrets.AWS_REGION }}
 
       - name: CDK Deploy
         run: npx cdk deploy --require-approval never
