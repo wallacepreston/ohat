@@ -29,6 +29,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Clean up existing CDK resources
+        run: |
+          echo "Cleaning up existing CDK resources..."
+          # Try to delete the S3 bucket if it exists
+          aws s3 rb s3://cdk-hnb659fds-assets-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} --force || true
+          
+          # Try to delete existing CDK roles
+          aws iam delete-role --role-name cdk-hnb659fds-image-publishing-role-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} || true
+          aws iam delete-role --role-name cdk-hnb659fds-file-publishing-role-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} || true
+          aws iam delete-role --role-name cdk-hnb659fds-cfn-exec-role-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} || true
+          aws iam delete-role --role-name cdk-hnb659fds-lookup-role-${{ secrets.AWS_ACCOUNT_ID }}-${{ secrets.AWS_REGION }} || true
+          
+          # Wait a bit for resources to be fully deleted
+          sleep 10
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
       - name: Install dependencies
         run: npm ci
         working-directory: ./aws/cdk
@@ -46,7 +64,9 @@ jobs:
         if: steps.check-bootstrap.outputs.needs_bootstrap == 'true'
         run: |
           echo "Bootstrapping AWS environment in region ${{ secrets.AWS_REGION }}..."
+          # First try with no-execute to validate
           npx cdk bootstrap "aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}" --force --no-execute
+          # Then try the actual bootstrap
           npx cdk bootstrap "aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}" --force
         working-directory: ./aws/cdk
         env:
