@@ -46,6 +46,7 @@ jobs:
         if: steps.check-bootstrap.outputs.needs_bootstrap == 'true'
         run: |
           echo "Bootstrapping AWS environment in region ${{ secrets.AWS_REGION }}..."
+          npx cdk bootstrap "aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}" --force --no-execute
           npx cdk bootstrap "aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}" --force
         working-directory: ./aws/cdk
         env:
