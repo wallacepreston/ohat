@@ -2,11 +2,53 @@ import { SalesforceContactHourRequest, SalesforceContactHourResponse, ContactHou
 
 export class SalesforceService {
   private readonly baseUrl: string;
-  private readonly authToken: string;
+  private readonly clientId: string;
+  private readonly clientSecret: string;
+  private authToken: string;
 
   constructor() {
-    this.baseUrl = process.env.SALESFORCE_API_URL || "https://mh--tst.sandbox.my.salesforce.com/services/data/v62.0";
-    this.authToken = process.env.SALESFORCE_AUTH_TOKEN || "";
+    this.baseUrl = process.env.SALESFORCE_API_URL || "https://mh--tst.sandbox.my.salesforce.com/services";
+    this.clientId = process.env.SALESFORCE_CLIENT_ID || "";
+    this.clientSecret = process.env.SALESFORCE_CLIENT_SECRET || "";
+    this.authToken = "";
+  }
+
+  private async getAuthToken(): Promise<string> {
+    try {
+      const tokenUrl = `${this.baseUrl}/oauth2/token`;
+      if (!this.clientId || !this.clientSecret) {
+        throw new Error("Salesforce client ID or secret is missing");
+      }
+      const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
+
+      // Add scope if needed (even if blank)
+      const params = new URLSearchParams();
+      params.append('grant_type', 'client_credentials');
+      // params.append('scope', ''); // Uncomment if Salesforce expects a scope field
+
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${credentials}`,
+          'Accept': '*/*',
+          'Cache-Control': 'no-cache'
+        },
+        body: params.toString()
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get Salesforce auth token: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      this.authToken = data.access_token;
+      return this.authToken;
+    } catch (error) {
+      console.error('Error getting Salesforce auth token:', error);
+      throw error;
+    }
   }
 
   /**
@@ -17,12 +59,15 @@ export class SalesforceService {
    */
   async createContactHour(contactId: string, result: ContactHourObject): Promise<string> {
     try {
+      // Get fresh auth token before making the request
+      await this.getAuthToken();
+
       const request: SalesforceContactHourRequest = {
         Result_JSON__c: JSON.stringify(result),
         Contact__c: contactId
       };
 
-      const response = await fetch(`${this.baseUrl}/sobjects/Contact_Hour__c`, {
+      const response = await fetch(`${this.baseUrl}/data/v62.0/sobjects/Contact_Hour__c`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,7 +77,8 @@ export class SalesforceService {
       });
 
       if (!response.ok) {
-        throw new Error(`Salesforce API error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to create Contact Hour: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data: SalesforceContactHourResponse = await response.json();
