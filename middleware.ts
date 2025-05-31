@@ -33,6 +33,7 @@ export async function middleware(request: NextRequest) {
     }
     return pathname.startsWith(route);
   })) {
+    // For ignored routes, skip auth check entirely
     return NextResponse.next();
   }
   
@@ -60,7 +61,7 @@ export async function middleware(request: NextRequest) {
   }
   
   // User is authorized, continue to the protected route
-  // return NextResponse.next();
+  return NextResponse.next();
 }
 
 export const config = {
