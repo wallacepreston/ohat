@@ -78,6 +78,7 @@ export default function ResultsTable({ results, onClearResults, renderAdditional
           <TableBody>
             {results.map((result, index) => {
               const instructor = instructorMap.get(result.contactId);
+              const salesforce = (result as any).salesforce;
               return (
                 <TableRow key={index}>
                   <TableCell>
@@ -107,6 +108,12 @@ export default function ResultsTable({ results, onClearResults, renderAdditional
                       {renderStatusIcon(result.status)}
                     </span>
                     {result.source && <div className="text-sm text-muted-foreground">Source: {result.source}</div>}
+                    {salesforce && (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        <div>Salesforce ID: {salesforce.contactHourId}</div>
+                        <div>Created: {salesforce.created ? "Yes" : "No"}</div>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               );
@@ -119,6 +126,7 @@ export default function ResultsTable({ results, onClearResults, renderAdditional
       <div className="md:hidden space-y-4">
         {results.map((result, index) => {
           const instructor = instructorMap.get(result.contactId);
+          const salesforce = (result as any).salesforce;
           return (
             <div key={index} className="border rounded-lg p-4 bg-background space-y-3">
               <div className="border-b pb-2 mb-2">
@@ -131,6 +139,12 @@ export default function ResultsTable({ results, onClearResults, renderAdditional
                     {renderStatusIcon(result.status)}
                   </span>
                   {result.source && <div className="text-sm text-muted-foreground">Source: {result.source}</div>}
+                  {salesforce && (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      <div>Salesforce ID: {salesforce.contactHourId}</div>
+                      <div>Created: {salesforce.created ? "Yes" : "No"}</div>
+                    </div>
+                  )}
                 </div>
               </div>
               
