@@ -6,7 +6,8 @@ import type {
   BatchRequest,
   BatchResponse,
   BatchRequestInstructor,
-  TimeSlot
+  TimeSlot,
+  BatchResponseResult
 } from "@/types/salesforce"
 import { OfficeHoursStatus } from "@/types/salesforce"
 import { determineResultStatus, validateResultStatus } from "@/app/utils/status"
@@ -16,7 +17,7 @@ import { StructuredOutputParser } from "langchain/output_parsers"
 import { RunnableSequence, RunnableLambda } from "@langchain/core/runnables"
 import { StringOutputParser } from "@langchain/core/output_parsers"
 import { queueInstructorCrawl } from "@/app/services/sqsService"
-import { parseTimeString, orderDaysOfWeek } from "./timeUtils"
+import { parseTimeString, orderDaysOfWeek, convertToTimeSlots } from "./utils/timeUtils"
 import { salesforceService } from "@/app/services/salesforceService"
 import { ContactHourObject } from "@/app/types/salesforce-contact"
 
@@ -371,9 +372,11 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
         
         // Apply validation logic to photo results
         const validatedResults = validateResultStatus(results);
+
+        const resultsToReturn = [];
         
         // Create Contact Hour record in Salesforce for each result
-        for (const result of validatedResults) {
+        for (let result of validatedResults) {
           if (result.status === OfficeHoursStatus.SUCCESS || 
               result.status === OfficeHoursStatus.PARTIAL_SUCCESS || 
               result.status === OfficeHoursStatus.VALIDATED) {
@@ -384,28 +387,42 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
             }
             
             try {
-              const contactHourId = await salesforceService.createContactHour(contactId, result);
-              console.log(`Created Contact Hour record for ${result.instructor}`);
-              
+              const formattedResult = salesforceService.formatContactHourResult({
+                ...result,
+                contactId: contactId,
+                status: result.status
+              });
+              const contactHourId =await salesforceService.createContactHour(contactId, formattedResult);
+              console.log(`Created Contact Hour record for Contact ID: ${contactId}`);
+              resultsToReturn.push({
+                ...formattedResult,
+                salesforce: {
+                  contactHourId,
+                  created: true
+                }
+              });
               // Add Salesforce information to the result
               result.salesforce = {
                 contactHourId,
                 created: true
               };
             } catch (error) {
-              console.error(`Failed to create Contact Hour record for ${result.instructor}:`, error);
+              console.error(`Failed to create Contact Hour record for Contact ID: ${contactId}:`, error);
               
-              // Add error information to the result
-              result.salesforce = {
-                contactHourId: "",
-                created: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred"
-              };
+              resultsToReturn.push({
+                ...result,
+                // Add error information to the result
+                salesforce: {
+                  contactHourId: "",
+                  created: false,
+                  error: error instanceof Error ? error.message : "Unknown error occurred"
+                }
+              });
             }
           }
         }
         
-        return validatedResults;
+        return resultsToReturn;
       } else {
         // Process the single record as an array of one
         const results = await processMultipleWithPerplexity([parsedData])
@@ -913,7 +930,7 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
     
     // Create the response template
     const response: BatchResponse = {
-      batchId: batchRequest.batchId || `batch-${Date.now()}`, // Ensure batchId is never undefined
+      batchId: batchRequest.batchId || `batch-1234`, // Ensure batchId is never undefined
       processedTimestamp: new Date().toISOString(),
       results: [],
       exceptions: []
@@ -940,34 +957,29 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
         if (results.length > 0) {
           const result = results[0];
           
+          // Check for contactId first
+          if (!instructor.contactId) {
+            response.exceptions.push({
+              contactId: "unknown",
+              status: "ERROR",
+              reason: "Missing contact ID",
+              actionTaken: "NONE"
+            });
+            return;
+          }
+
           // Determine if this was successful
           if (result.status === OfficeHoursStatus.SUCCESS || 
               result.status === OfficeHoursStatus.VALIDATED || 
               result.status === OfficeHoursStatus.PARTIAL_SUCCESS) {
-            
-            // Convert to the new time slot format
-            const officeHourSlots = convertToTimeSlots(result.days, result.times, result.location, result.comments || undefined);
-            const teachingHourSlots = convertToTimeSlots([], result.teachingHours, result.teachingLocation, result.comments || undefined);
-            
-            // Success response
-            // Use determineResultStatus to get the status based on our rules
-            const internalStatus = determineResultStatus(result);
-            
-            // Map OfficeHoursStatus to BatchResponse status string
-            let apiStatus: "SUCCESS" | "PARTIAL_SUCCESS";
-            if (internalStatus === OfficeHoursStatus.SUCCESS) {
-              apiStatus = "SUCCESS";
-            } else {
-              apiStatus = "PARTIAL_SUCCESS";
-            }
-            
-            response.results.push({
+
+            // Format the result before sending to Salesforce
+            const formattedResult = salesforceService.formatContactHourResult({
+              ...result,
               contactId: instructor.contactId,
-              status: apiStatus,
-              officeHours: officeHourSlots,
-              teachingHours: teachingHourSlots,
-              source: result.validatedBy || "web_search"
             });
+            
+            response.results.push(formattedResult as BatchResponseResult);
           } else {
             // Exception response for not found or error
             response.exceptions.push({
@@ -1044,132 +1056,6 @@ function getActionTaken(
   return "NONE";
 }
 
-/**
- * Convert string days/times to structured time slots
- */
-function convertToTimeSlots(
-  days: string[],
-  timeString: string,
-  location: string,
-  comments?: string
-): TimeSlot[] {
-  // If no time information, return empty array
-  if (!timeString || timeString.trim() === "") {
-    return [];
-  }
-  
-  try {
-    // Order the days of the week properly
-    const orderedDays = orderDaysOfWeek(days);
-    
-    // Simple case: if we have explicit days and one time period
-    if (orderedDays.length > 0 && !timeString.includes(',')) {
-      // Parse the time string (e.g., "2-4pm" or "14:00-16:00")
-      const result = parseTimeString(timeString);
-      
-      // If parsing was successful, create a slot
-      if (result.success && result.timeSlot) {
-        return [{
-          startHour: result.timeSlot.startHour,
-          startMinute: result.timeSlot.startMinute,
-          startAmPm: result.timeSlot.startAmPm,
-          endHour: result.timeSlot.endHour,
-          endMinute: result.timeSlot.endMinute,
-          endAmPm: result.timeSlot.endAmPm,
-          dayOfWeek: orderedDays.join('|'),
-          comments: comments ? comments : "Weekly office hours",
-          location: location || "Not specified"
-        }];
-      }
-      
-      // If parsing failed, return empty array
-      return [];
-    }
-    
-    // More complex case: try to parse from the time string itself
-    // This would handle entries like "Monday 2-4pm, Wednesday 3-5pm"
-    const slots: TimeSlot[] = [];
-    
-    // Split by commas or semicolons to get different time slots
-    const timeSegments = timeString.split(/[,;]/).map(s => s.trim()).filter(s => s);
-    
-    for (const segment of timeSegments) {
-      // Try to extract day and time
-      const dayMatch = segment.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i);
-      if (dayMatch) {
-        const day = dayMatch[1];
-        const timeSegmentWithoutDay = segment.substring(day.length).trim();
-        const parsedTime = parseTimeString(timeSegmentWithoutDay);
-        
-        if (parsedTime.success && parsedTime.timeSlot) {
-          slots.push({
-            startHour: parsedTime.timeSlot.startHour,
-            startMinute: parsedTime.timeSlot.startMinute,
-            startAmPm: parsedTime.timeSlot.startAmPm,
-            endHour: parsedTime.timeSlot.endHour,
-            endMinute: parsedTime.timeSlot.endMinute,
-            endAmPm: parsedTime.timeSlot.endAmPm,
-            dayOfWeek: day,
-            comments: comments ? comments : "Weekly office hours",
-            location: location || "Not specified"
-          });
-        }
-      } else {
-        // If no day found, use the time as is
-        const parsedTime = parseTimeString(segment);
-        
-        if (parsedTime.success && parsedTime.timeSlot) {
-          slots.push({
-            startHour: parsedTime.timeSlot.startHour,
-            startMinute: parsedTime.timeSlot.startMinute,
-            startAmPm: parsedTime.timeSlot.startAmPm,
-            endHour: parsedTime.timeSlot.endHour,
-            endMinute: parsedTime.timeSlot.endMinute,
-            endAmPm: parsedTime.timeSlot.endAmPm,
-            dayOfWeek: orderedDays.length > 0 ? orderedDays.join('|') : "Not specified",
-            comments: comments ? comments : "Weekly office hours",
-            location: location || "Not specified"
-          });
-        }
-      }
-    }
-    
-    // Order the slots by day of week before returning
-    return slots.sort((a, b) => {
-      const dayOrderA = getDayOrder(a.dayOfWeek);
-      const dayOrderB = getDayOrder(b.dayOfWeek);
-      return dayOrderA - dayOrderB;
-    });
-  } catch (error) {
-    console.warn('Error parsing time slots:', error);
-    // Return empty array instead of fallback values
-    return [];
-  }
-}
-
-/**
- * Helper function to get the order value of a day string
- * Used for sorting time slots by day of week
- * Only considers Monday through Friday (excludes weekends)
- */
-function getDayOrder(dayString: string): number {
-  const dayOrder: Record<string, number> = {
-    'monday': 0,
-    'tuesday': 1,
-    'wednesday': 2,
-    'thursday': 3,
-    'friday': 4
-  };
-  
-  // Handle combined days (e.g., "Monday|Wednesday")
-  if (dayString.includes('|')) {
-    // Return the order of the first day in the list
-    const firstDay = dayString.split('|')[0].toLowerCase();
-    return dayOrder[firstDay] ?? 999;
-  }
-  
-  return dayOrder[dayString.toLowerCase()] ?? 999;
-}
 
 // Helper function to create error result
 function createErrorResult(data: any) {

@@ -1,4 +1,4 @@
-import { parseTimeString } from './timeUtils';
+import { parseTimeString } from './utils/timeUtils';
 
 describe('parseTimeString function', () => {
   it('should handle the format "1:00 PM - 2:00 PM" with spaces', () => {

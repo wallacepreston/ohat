@@ -1,4 +1,7 @@
 import { SalesforceContactHourRequest, SalesforceContactHourResponse, ContactHourObject } from "@/app/types/salesforce-contact";
+import { OfficeHoursStatus } from "@/types/salesforce"
+import { convertToTimeSlots } from "../utils/timeUtils"
+import { determineResultStatus } from "@/app/utils/status"
 
 export class SalesforceService {
   private readonly baseUrl: string;
@@ -11,6 +14,31 @@ export class SalesforceService {
     this.clientId = process.env.SALESFORCE_CLIENT_ID || "";
     this.clientSecret = process.env.SALESFORCE_CLIENT_SECRET || "";
     this.authToken = "";
+  }
+
+  public formatContactHourResult(result: ContactHourObject) {
+    // Convert to the new time slot format
+    const officeHourSlots = convertToTimeSlots(result.days, result.times, result.location, result.comments || undefined);
+    const teachingHourSlots = convertToTimeSlots([], result.teachingHours, result.teachingLocation, result.comments || undefined);
+    
+    // Use determineResultStatus to get the status based on our rules
+    const internalStatus = determineResultStatus(result);
+    
+    // Map OfficeHoursStatus to API status string
+    let apiStatus: "SUCCESS" | "PARTIAL_SUCCESS";
+    if (internalStatus === OfficeHoursStatus.SUCCESS) {
+      apiStatus = "SUCCESS";
+    } else {
+      apiStatus = "PARTIAL_SUCCESS";
+    }
+    
+    return {
+      contactId: result.contactId,
+      status: apiStatus,
+      officeHours: officeHourSlots,
+      teachingHours: teachingHourSlots,
+      source: result.validatedBy || "web_search"
+    };
   }
 
   private async getAuthToken(): Promise<string> {
@@ -57,7 +85,7 @@ export class SalesforceService {
    * @param result The contact hour result to store
    * @returns Promise with the created record ID
    */
-  async createContactHour(contactId: string, result: ContactHourObject): Promise<string> {
+  async createContactHour(contactId: string, result: any): Promise<string> {
     try {
       // Get fresh auth token before making the request
       await this.getAuthToken();

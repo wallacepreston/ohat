@@ -20,6 +20,12 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    serverActions: {
+      bodySizeLimit: '10mb',
+      bodysizeLimit: '10mb',
+      bodysizelimit: '10mb',
+      allowedOrigins: ['localhost:3000'],
+    },
   },
 }
 

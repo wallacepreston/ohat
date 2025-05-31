@@ -1,4 +1,4 @@
-import { orderDaysOfWeek, parseTimeString } from '@/app/timeUtils';
+import { orderDaysOfWeek, parseTimeString } from '@/app/utils/timeUtils';
 
 describe('orderDaysOfWeek', () => {
   test('should return an empty array when given an empty array', () => {

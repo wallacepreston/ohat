@@ -134,7 +134,7 @@ export function convertBatchResponseToLegacy(
  */
 export function convertLegacyToBatchRequest(
   data: any[],
-  batchId = `batch-${Date.now()}`
+  batchId = `batch-1234`
 ): BatchRequest {
   // Extract institution from the first item if all institutions are the same
   const institutions = new Set(data.map(item => item.Account_Name__c).filter(Boolean));
@@ -143,7 +143,7 @@ export function convertLegacyToBatchRequest(
     "Multiple Institutions";
   
   // Extract account ID from the first item
-  const accountId = data[0]?.Account_ID__c || `acc-${Date.now()}`;
+  const accountId = data[0]?.Account_ID__c || `acc-1234`;
   
   // Convert instructors
   const instructors = data.map(item => ({

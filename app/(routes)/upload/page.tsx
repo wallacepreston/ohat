@@ -4,16 +4,15 @@ import { useState, useRef, FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { processOfficeHours } from "@/app/actions"
-import type { ProcessedOfficeHours, BatchRequest, BatchRequestInstructor } from "@/types/salesforce"
-import { OfficeHoursStatus } from "@/types/salesforce"
+import type { BatchResponse, BatchRequest, BatchRequestInstructor, TimeSlot } from "@/types/salesforce"
 import { useStatus } from "@/app/context/StatusContext"
 import { useLoading } from "@/app/context/LoadingContext"
 import ResultsTable from "@/app/components/ResultsTable"
-import { processBatchOfficeHours, convertBatchResponseToLegacy, processPhotoUpload } from "@/app/lib/api-client"
+import { processBatchOfficeHours, processPhotoUpload } from "@/app/lib/api-client"
+import { convertToTimeSlots } from "@/app/utils/timeUtils"
 
 export default function UploadPage() {
-  const [results, setResults] = useState<ProcessedOfficeHours[]>([])
+  const [results, setResults] = useState<BatchResponse['results']>([])
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [institution, setInstitution] = useState<string>("")
   const [instructorName, setInstructorName] = useState<string>("")
@@ -53,80 +52,53 @@ export default function UploadPage() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setPhotoInputDirty(true) // Mark as dirty on submission attempt
+    setPhotoInputDirty(true)
     setLoading(true)
     setLoadingMessage("Processing photo and data...")
-    clearStatusMessages() // Clear previous status messages
+    clearStatusMessages()
     
-    // Check if all required fields are present
     if (!photoFile) {
       addStatusMessage('error', 'A photo is required for analysis')
       setLoading(false)
       return
     }
     
-    if (!institution.trim()) {
-      addStatusMessage('error', 'Institution name is required')
-      setLoading(false)
-      return
-    }
-    
-    if (!instructorName.trim()) {
-      addStatusMessage('error', 'Instructor name is required')
-      setLoading(false)
-      return
-    }
-    
     try {
-      // Create the batch request object
-      const batchRequest = {
-        batchId: `batch-${Date.now()}`,
+      const batchId = `batch-${Date.now()}`
+      const batchRequest: BatchRequest = {
+        batchId,
         accountId: institution.trim(),
         institution: institution.trim(),
-        instructors: [
-          {
-            contactId: contactId.trim() || `contact-${Date.now()}`,
-            name: instructorName.trim(),
-            email: "", // Add empty email field to satisfy the type
-            department: "" // Add empty department field to satisfy the type
-          }
-        ]
+        instructors: [{
+          contactId: contactId.trim() || `contact-${Date.now()}`,
+          name: instructorName.trim(),
+          email: "",
+          department: ""
+        }] as [BatchRequestInstructor, ...BatchRequestInstructor[]]
       }
       
-      // Create a FormData object for submission
-      const formData = new FormData()
-      
-      // Add the JSON data with the same field name expected by the backend
-      formData.append("salesforceData", JSON.stringify(batchRequest))
-      
-      // Add photo to formData
-      formData.append("photo", photoFile)
-      
-      // Use the batch API if available, otherwise fall back to legacy API
-      let data: ProcessedOfficeHours[] = []
+      let data: BatchResponse['results'] = []
       
       try {
-        // Photo uploads need to use the API endpoint for photos
         if (photoFile) {
-          data = await processPhotoUpload(batchRequest, photoFile)
+          const photoResults = await processPhotoUpload(batchRequest, photoFile)
+          console.log('photoResults:', photoResults)
+          
+          // Use the results directly from the photo upload
+          data = photoResults as unknown as BatchResponse['results']
         } else {
-          // Use batch API for non-photo requests
-          const typedRequest: BatchRequest = {
-            batchId: batchRequest.batchId,
-            accountId: batchRequest.accountId,
-            institution: batchRequest.institution,
-            instructors: batchRequest.instructors as [BatchRequestInstructor, ...BatchRequestInstructor[]]
-          }
-          const batchResponse = await processBatchOfficeHours(typedRequest)
-          data = convertBatchResponseToLegacy(batchResponse, typedRequest)
+          const batchResponse = await processBatchOfficeHours(batchRequest)
+          data = batchResponse.results
         }
       } catch (error) {
-        console.warn("API failed, falling back to legacy API:", error)
-        data = await processOfficeHours(formData)
+        console.warn("API failed:", error)
+        addStatusMessage('error', 'Failed to process photo. Please try again.')
+        setLoading(false)
+        return
       }
       
-      // Update the results without duplicates
-      updateResultsWithoutDuplicates(data)
+      // Update the results
+      setResults(data)
       
       // Display status messages based on the data
       displayStatusMessages(data)
@@ -139,30 +111,18 @@ export default function UploadPage() {
   }
 
   // Helper function to display status messages based on the provided data
-  const displayStatusMessages = (data: ProcessedOfficeHours[]) => {
+  const displayStatusMessages = (data: BatchResponse['results']) => {
     if (data.length === 0) {
       addStatusMessage('warning', 'No results were returned')
-      return;
+      return
     }
     
-    // Calculate counts for each status type based on the provided data
-    const validatedCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
-    const foundCount = data.filter(item => item.status === OfficeHoursStatus.SUCCESS).length
-    const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_SUCCESS).length
-    const notFoundCount = data.filter(item => item.status === OfficeHoursStatus.NOT_FOUND).length
-    const errorCount = data.filter(item => item.status === OfficeHoursStatus.ERROR).length
+    const successCount = data.filter(item => item.status === "SUCCESS").length
+    const partialCount = data.filter(item => item.status === "PARTIAL_SUCCESS").length
+    const notFoundCount = data.filter(item => item.status === "NOT_FOUND").length
     
-    // Calculate Salesforce statistics
-    const salesforceCreatedCount = data.filter(item => item.salesforce?.created).length
-    const salesforceError = data.find(item => item.salesforce && !item.salesforce.created)?.salesforce?.error
-    
-    // Add a message for each status type with results
-    if (validatedCount > 0) {
-      addStatusMessage('success', `Validated ${validatedCount} instructor(s)`)
-    }
-    
-    if (foundCount > 0) {
-      addStatusMessage('success', `Found information for ${foundCount} instructor(s)`)
+    if (successCount > 0) {
+      addStatusMessage('success', `Found information for ${successCount} instructor(s)`)
     }
     
     if (partialCount > 0) {
@@ -172,46 +132,7 @@ export default function UploadPage() {
     if (notFoundCount > 0) {
       addStatusMessage('warning', `Could not find information for ${notFoundCount} instructor(s)`)
     }
-    
-    if (errorCount > 0) {
-      addStatusMessage('error', `Error processing ${errorCount} instructor(s)`)
-    }
-
-    // Add Salesforce status messages
-    if (salesforceCreatedCount > 0) {
-      addStatusMessage('success', 'Created Salesforce Contact Hour record')
-    }
-    
-    if (salesforceError) {
-      addStatusMessage('error', `Failed to create Salesforce Contact Hour record: ${salesforceError}`)
-    }
-  };
-
-  // Helper function to update results without duplicates
-  const updateResultsWithoutDuplicates = (newData: ProcessedOfficeHours[]) => {
-    setResults(prevResults => {
-      // Create a new array with existing results
-      const updatedResults = [...prevResults];
-      
-      // For each new result
-      newData.forEach(newItem => {
-        // Check if this instructor already exists in our results
-        const existingIndex = updatedResults.findIndex(
-          existingItem => existingItem.instructor === newItem.instructor
-        );
-        
-        if (existingIndex >= 0) {
-          // Replace the existing instructor data with the new data
-          updatedResults[existingIndex] = newItem;
-        } else {
-          // Add new instructor to results
-          updatedResults.push(newItem);
-        }
-      });
-      
-      return updatedResults;
-    });
-  };
+  }
 
   return (
     <div className="space-y-8">
@@ -267,36 +188,6 @@ export default function UploadPage() {
         
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="space-y-3">
-            <Label htmlFor="institution" className="flex items-center text-base">
-              Institution
-              <span className="text-red-500 ml-1">*</span>
-            </Label>
-            <Input
-              id="institution"
-              value={institution}
-              onChange={(e) => setInstitution(e.target.value)}
-              placeholder="Enter institution name"
-              required
-              className="w-full"
-            />
-          </div>
-          
-          <div className="space-y-3">
-            <Label htmlFor="instructor-name" className="flex items-center text-base">
-              Instructor Name
-              <span className="text-red-500 ml-1">*</span>
-            </Label>
-            <Input
-              id="instructor-name"
-              value={instructorName}
-              onChange={(e) => setInstructorName(e.target.value)}
-              placeholder="Enter instructor name"
-              required
-              className="w-full"
-            />
-          </div>
-          
-          <div className="space-y-3">
             <Label htmlFor="contact-id" className="flex items-center text-base">
               Contact ID
               <span className="text-red-500 ml-1">*</span>
@@ -316,7 +207,7 @@ export default function UploadPage() {
         
         <Button 
           type="submit" 
-          disabled={isLoading || !photoFile || !institution || !instructorName || !contactId}
+          disabled={isLoading || !photoFile || !contactId}
           className="w-full mt-4"
         >
           {isLoading ? "Processing..." : "Process Photo and Data"}
@@ -326,26 +217,6 @@ export default function UploadPage() {
       <ResultsTable 
         results={results}
         onClearResults={clearResults}
-        renderAdditionalInfo={(result) => {
-          if (!result.salesforce) return null;
-          
-          return (
-            <div className="mt-2 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Salesforce:</span>
-                {result.salesforce.created ? (
-                  <span className="text-green-600">
-                    Contact Hour created (ID: {result.salesforce.contactHourId})
-                  </span>
-                ) : (
-                  <span className="text-red-600">
-                    Failed to create Contact Hour: {result.salesforce.error}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        }}
       />
     </div>
   )

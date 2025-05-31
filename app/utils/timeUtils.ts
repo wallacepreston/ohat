@@ -5,11 +5,21 @@ interface TimeSlot {
   endHour: string;
   endMinute: string;
   endAmPm: "AM" | "PM";
+  dayOfWeek: string;
+  location: string;
+  comments?: string;
 }
 
 interface TimeParseResult {
   success: boolean;
-  timeSlot?: TimeSlot;
+  timeSlot?: {
+    startHour: string;
+    startMinute: string;
+    startAmPm: "AM" | "PM";
+    endHour: string;
+    endMinute: string;
+    endAmPm: "AM" | "PM";
+  };
 }
 
 /**
@@ -238,3 +248,130 @@ export function parseTimeString(timeString: string): TimeParseResult {
     return { success: false };
   }
 } 
+
+/**
+ * Convert string days/times to structured time slots
+ */
+export function convertToTimeSlots(
+  days: string[],
+  timeString: string | null | undefined,
+  location: string,
+  comments?: string
+): TimeSlot[] {
+  // If no time information, return empty array
+  if (!timeString || typeof timeString !== 'string' || timeString.trim() === "") {
+    return [];
+  }
+  
+  try {
+    // Order the days of the week properly
+    const orderedDays = orderDaysOfWeek(days);
+    
+    // Simple case: if we have explicit days and one time period
+    if (orderedDays.length > 0 && !timeString.includes(',')) {
+      // Parse the time string (e.g., "2-4pm" or "14:00-16:00")
+      const result = parseTimeString(timeString);
+      
+      // If parsing was successful, create a slot
+      if (result.success && result.timeSlot) {
+        return [{
+          startHour: result.timeSlot.startHour,
+          startMinute: result.timeSlot.startMinute,
+          startAmPm: result.timeSlot.startAmPm,
+          endHour: result.timeSlot.endHour,
+          endMinute: result.timeSlot.endMinute,
+          endAmPm: result.timeSlot.endAmPm,
+          dayOfWeek: orderedDays.join('|'),
+          comments: comments ? comments : "Weekly office hours",
+          location: location || "Not specified"
+        }];
+      }
+      
+      // If parsing failed, return empty array
+      return [];
+    }
+    
+    // More complex case: try to parse from the time string itself
+    // This would handle entries like "Monday 2-4pm, Wednesday 3-5pm"
+    const slots: TimeSlot[] = [];
+    
+    // Split by commas or semicolons to get different time slots
+    const timeSegments = timeString.split(/[,;]/).map(s => s.trim()).filter(s => s);
+    
+    for (const segment of timeSegments) {
+      // Try to extract day and time
+      const dayMatch = segment.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i);
+      if (dayMatch) {
+        const day = dayMatch[1];
+        const timeSegmentWithoutDay = segment.substring(day.length).trim();
+        const parsedTime = parseTimeString(timeSegmentWithoutDay);
+        
+        if (parsedTime.success && parsedTime.timeSlot) {
+          slots.push({
+            startHour: parsedTime.timeSlot.startHour,
+            startMinute: parsedTime.timeSlot.startMinute,
+            startAmPm: parsedTime.timeSlot.startAmPm,
+            endHour: parsedTime.timeSlot.endHour,
+            endMinute: parsedTime.timeSlot.endMinute,
+            endAmPm: parsedTime.timeSlot.endAmPm,
+            dayOfWeek: day,
+            comments: comments ? comments : "Weekly office hours",
+            location: location || "Not specified"
+          });
+        }
+      } else {
+        // If no day found, use the time as is
+        const parsedTime = parseTimeString(segment);
+        
+        if (parsedTime.success && parsedTime.timeSlot) {
+          slots.push({
+            startHour: parsedTime.timeSlot.startHour,
+            startMinute: parsedTime.timeSlot.startMinute,
+            startAmPm: parsedTime.timeSlot.startAmPm,
+            endHour: parsedTime.timeSlot.endHour,
+            endMinute: parsedTime.timeSlot.endMinute,
+            endAmPm: parsedTime.timeSlot.endAmPm,
+            dayOfWeek: orderedDays.length > 0 ? orderedDays.join('|') : "Not specified",
+            comments: comments ? comments : "Weekly office hours",
+            location: location || "Not specified"
+          });
+        }
+      }
+    }
+    
+    // Order the slots by day of week before returning
+    return slots.sort((a, b) => {
+      const dayOrderA = getDayOrder(a.dayOfWeek);
+      const dayOrderB = getDayOrder(b.dayOfWeek);
+      return dayOrderA - dayOrderB;
+    });
+  } catch (error) {
+    console.warn('Error parsing time slots:', error);
+    // Return empty array instead of fallback values
+    return [];
+  }
+}
+
+/**
+ * Helper function to get the order value of a day string
+ * Used for sorting time slots by day of week
+ * Only considers Monday through Friday (excludes weekends)
+ */
+export function getDayOrder(dayString: string): number {
+  const dayOrder: Record<string, number> = {
+    'monday': 0,
+    'tuesday': 1,
+    'wednesday': 2,
+    'thursday': 3,
+    'friday': 4
+  };
+  
+  // Handle combined days (e.g., "Monday|Wednesday")
+  if (dayString.includes('|')) {
+    // Return the order of the first day in the list
+    const firstDay = dayString.split('|')[0].toLowerCase();
+    return dayOrder[firstDay] ?? 999;
+  }
+  
+  return dayOrder[dayString.toLowerCase()] ?? 999;
+}

@@ -1,15 +1,17 @@
 import { OfficeHoursStatus } from "@/types/salesforce";
 
+type StatusType = "VALIDATED" | "SUCCESS" | "PARTIAL_SUCCESS" | "NOT_FOUND" | "ERROR";
+
 // Function to generate status styling class
-export const getStatusClass = (status: OfficeHoursStatus) => {
+export const getStatusClass = (status: StatusType) => {
   switch(status) {
-    case OfficeHoursStatus.VALIDATED:
+    case "VALIDATED":
       return "text-green-600 font-bold";
-    case OfficeHoursStatus.SUCCESS:
+    case "SUCCESS":
       return "text-green-600";
-    case OfficeHoursStatus.NOT_FOUND:
+    case "NOT_FOUND":
       return "text-yellow-600";
-    case OfficeHoursStatus.PARTIAL_SUCCESS:
+    case "PARTIAL_SUCCESS":
       return "text-blue-600";
     default:
       return "text-red-600";
@@ -17,7 +19,7 @@ export const getStatusClass = (status: OfficeHoursStatus) => {
 };
 
 // Helper functions
-export function formatStatus(status: OfficeHoursStatus): string {
+export function formatStatus(status: StatusType): string {
   return status
     ? status
       .toLowerCase()
@@ -28,8 +30,8 @@ export function formatStatus(status: OfficeHoursStatus): string {
 }
 
 // helper to render check if SUCCESS or PARTIAL_SUCCESS
-export function renderStatusIcon(status: OfficeHoursStatus): React.ReactNode {
-  return status === OfficeHoursStatus.SUCCESS || status === OfficeHoursStatus.PARTIAL_SUCCESS
+export function renderStatusIcon(status: StatusType): React.ReactNode {
+  return status === "SUCCESS" || status === "PARTIAL_SUCCESS"
     ? <span className="ml-1 text-xs">✓</span>
     : null;
 }

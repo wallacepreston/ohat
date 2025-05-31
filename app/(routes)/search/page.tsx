@@ -4,17 +4,17 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { processOfficeHours } from "@/app/actions"
-import type { ProcessedOfficeHours, BatchRequest } from "@/types/salesforce"
-import { OfficeHoursStatus } from "@/types/salesforce"
+import type { BatchResponse, BatchRequest, BatchRequestInstructor, BatchResponseResult, ProcessedOfficeHours } from "@/types/salesforce"
 import { useStatus } from "@/app/context/StatusContext"
 import { useLoading } from "@/app/context/LoadingContext"
 import ResultsTable from "@/app/components/ResultsTable"
 import { useSocket } from '@/app/hooks/useSocket';
-import { convertLegacyToBatchRequest, processBatchOfficeHours, convertBatchResponseToLegacy } from "@/app/lib/api-client"
+import { processBatchOfficeHours } from "@/app/lib/api-client"
+import { convertToTimeSlots } from "@/app/utils/timeUtils"
 
 export default function SearchPage() {
-  const [results, setResults] = useState<ProcessedOfficeHours[]>([])
+  const [results, setResults] = useState<BatchResponseResult[]>([])
+  const [instructors, setInstructors] = useState<BatchRequestInstructor[]>([])
   const { addStatusMessage, clearStatusMessages } = useStatus()
   const { isLoading, setLoading, setLoadingMessage } = useLoading()
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -22,28 +22,39 @@ export default function SearchPage() {
   // Function to clear results
   const clearResults = () => {
     setResults([]);
+    setInstructors([]);
   }
 
   // Set up Socket.IO connection
-  useSocket((data) => {
+  useSocket((data: ProcessedOfficeHours) => {
+    // Convert ProcessedOfficeHours to BatchResponseResult
+    const batchResult: BatchResponseResult = {
+      contactId: data.instructor, // Use instructor name as contactId
+      status: data.status === "SUCCESS" ? "SUCCESS" : 
+              data.status === "PARTIAL_SUCCESS" ? "PARTIAL_SUCCESS" : "NOT_FOUND",
+      officeHours: convertToTimeSlots(data.days || [], data.times || "", data.location || ""),
+      teachingHours: convertToTimeSlots([], data.teachingHours || "", data.teachingLocation || ""),
+      source: data.validatedBy || "web_search"
+    };
+
     // Update the table with new data
     setResults(prevData => {
       // Check if we already have this instructor's data
-      const existingIndex = prevData.findIndex(item => item.instructor === data.instructor);
+      const existingIndex = prevData.findIndex(item => item.contactId === batchResult.contactId);
       
       if (existingIndex >= 0) {
         // Update existing entry
         const newData = [...prevData];
-        newData[existingIndex] = data;
+        newData[existingIndex] = batchResult;
         return newData;
       } else {
         // Add new entry
-        return [...prevData, data];
+        return [...prevData, batchResult];
       }
     });
 
     // Update status message
-    setStatusMessage(`Received update for ${data.instructor}`);
+    setStatusMessage(`Received update for ${batchResult.contactId}`);
     setTimeout(() => setStatusMessage(''), 3000); // Clear after 3 seconds
   });
 
@@ -77,43 +88,65 @@ export default function SearchPage() {
           'batchId' in parsedData && 
           'instructors' in parsedData) {
         
+        // Store the instructors for display
+        setInstructors(parsedData.instructors);
+        
         // Use the batch API directly
         const batchResponse = await processBatchOfficeHours(parsedData as BatchRequest);
-        const data = convertBatchResponseToLegacy(batchResponse, parsedData as BatchRequest);
-        updateResultsWithoutDuplicates(data);
+        setResults(batchResponse.results);
         
         // Calculate counts based on the new data
-        displayStatusMessages(data);
+        displayStatusMessages(batchResponse.results);
       }
-      // Case 2: Array of legacy instructor data
+      // Case 2: Array of instructor data
       else if (Array.isArray(parsedData)) {
         // Convert to batch format
-        const batchRequest = convertLegacyToBatchRequest(parsedData);
+        const batchRequest: BatchRequest = {
+          batchId: `batch-${Date.now()}`,
+          accountId: parsedData[0]?.accountId || "",
+          institution: parsedData[0]?.institution || "",
+          instructors: parsedData.map(instructor => ({
+            contactId: instructor.contactId || instructor.name || `contact-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+            name: instructor.name || "Unknown",
+            email: instructor.email || null,
+            department: instructor.department || null,
+            isKeyDecisionMaker: instructor.isKeyDecisionMaker || null
+          })) as [BatchRequestInstructor, ...BatchRequestInstructor[]]
+        };
+        
+        // Store the instructors for display
+        setInstructors(batchRequest.instructors);
+        
         const batchResponse = await processBatchOfficeHours(batchRequest);
-        const data = convertBatchResponseToLegacy(batchResponse, batchRequest);
-        updateResultsWithoutDuplicates(data);
+        setResults(batchResponse.results);
         
         // Calculate counts based on the new data
-        displayStatusMessages(data);
+        displayStatusMessages(batchResponse.results);
       }
-      // Case 3: Single instructor in legacy format
+      // Case 3: Single instructor
       else if (typeof parsedData === 'object') {
         // Convert to batch format
-        const batchRequest = convertLegacyToBatchRequest([parsedData]);
+        const batchRequest: BatchRequest = {
+          batchId: `batch-${Date.now()}`,
+          accountId: parsedData.accountId || "",
+          institution: parsedData.institution || "",
+          instructors: [{
+            contactId: parsedData.contactId || parsedData.name || `contact-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+            name: parsedData.name || "Unknown",
+            email: parsedData.email || null,
+            department: parsedData.department || null,
+            isKeyDecisionMaker: parsedData.isKeyDecisionMaker || null
+          }] as [BatchRequestInstructor, ...BatchRequestInstructor[]]
+        };
+        
+        // Store the instructors for display
+        setInstructors(batchRequest.instructors);
+        
         const batchResponse = await processBatchOfficeHours(batchRequest);
-        const data = convertBatchResponseToLegacy(batchResponse, batchRequest);
-        updateResultsWithoutDuplicates(data);
+        setResults(batchResponse.results);
         
         // Calculate counts based on the new data
-        displayStatusMessages(data);
-      }
-      // Case 4: Fallback for legacy API
-      else {
-        const data = await processOfficeHours(formData);
-        updateResultsWithoutDuplicates(data);
-        
-        // Calculate counts based on the new data
-        displayStatusMessages(data);
+        displayStatusMessages(batchResponse.results);
       }
     } catch (error) {
       console.error("Error processing data:", error)
@@ -124,26 +157,20 @@ export default function SearchPage() {
   }
 
   // Helper function to display status messages based on the provided data
-  const displayStatusMessages = (data: ProcessedOfficeHours[]) => {
+  const displayStatusMessages = (data: BatchResponseResult[]) => {
     if (data.length === 0) {
       addStatusMessage('warning', 'No results were returned')
       return;
     }
     
     // Calculate counts for each status type based on the provided data
-    const validatedCount = data.filter(item => item.status === OfficeHoursStatus.VALIDATED).length
-    const foundCount = data.filter(item => item.status === OfficeHoursStatus.SUCCESS).length
-    const partialCount = data.filter(item => item.status === OfficeHoursStatus.PARTIAL_SUCCESS).length
-    const notFoundCount = data.filter(item => item.status === OfficeHoursStatus.NOT_FOUND).length
-    const errorCount = data.filter(item => item.status === OfficeHoursStatus.ERROR).length
+    const successCount = data.filter(item => item.status === "SUCCESS").length
+    const partialCount = data.filter(item => item.status === "PARTIAL_SUCCESS").length
+    const notFoundCount = data.filter(item => item.status === "NOT_FOUND").length
     
     // Add a message for each status type with results
-    if (validatedCount > 0) {
-      addStatusMessage('success', `Validated ${validatedCount} instructor(s)`)
-    }
-    
-    if (foundCount > 0) {
-      addStatusMessage('success', `Found information for ${foundCount} instructor(s)`)
+    if (successCount > 0) {
+      addStatusMessage('success', `Found information for ${successCount} instructor(s)`)
     }
     
     if (partialCount > 0) {
@@ -153,37 +180,7 @@ export default function SearchPage() {
     if (notFoundCount > 0) {
       addStatusMessage('warning', `Could not find information for ${notFoundCount} instructor(s)`)
     }
-    
-    if (errorCount > 0) {
-      addStatusMessage('error', `Error processing ${errorCount} instructor(s)`)
-    }
   }
-
-  // Helper function to update results without duplicates
-  const updateResultsWithoutDuplicates = (newData: ProcessedOfficeHours[]) => {
-    setResults(prevResults => {
-      // Create a new array with existing results
-      const updatedResults = [...prevResults];
-      
-      // For each new result
-      newData.forEach(newItem => {
-        // Check if this instructor already exists in our results
-        const existingIndex = updatedResults.findIndex(
-          existingItem => existingItem.instructor === newItem.instructor
-        );
-        
-        if (existingIndex >= 0) {
-          // Replace the existing instructor data with the new data
-          updatedResults[existingIndex] = newItem;
-        } else {
-          // Add new instructor to results
-          updatedResults.push(newItem);
-        }
-      });
-      
-      return updatedResults;
-    });
-  };
 
   return (
     <div className="space-y-8">
@@ -207,6 +204,7 @@ export default function SearchPage() {
       <ResultsTable 
         results={results}
         onClearResults={clearResults}
+        instructors={instructors}
       />
     </div>
   )

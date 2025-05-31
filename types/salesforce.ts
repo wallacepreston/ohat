@@ -60,8 +60,8 @@ export const BatchResponseExceptionSchema = z.object({
 
 // BatchResponse schema
 export const BatchResponseSchema = z.object({
-  batchId: z.string(),
-  processedTimestamp: z.string(),
+  batchId: z.string().optional(),
+  processedTimestamp: z.string().optional(),
   results: z.array(BatchResponseResultSchema),
   exceptions: z.array(BatchResponseExceptionSchema)
 });
@@ -75,6 +75,8 @@ export const ProcessedOfficeHoursSchema = z.object({
   days: z.array(z.string()),
   times: z.string(),
   location: z.string(),
+  officeHours: z.string(),
+  officeHoursLocation: z.string(),
   teachingHours: z.string(),
   teachingLocation: z.string(),
   term: z.string(),

@@ -10,21 +10,33 @@ export interface SalesforceContactHourResponse {
 }
 
 export interface ContactHourObject {
-  contactId: string;
+  contactId?: string;
+  instructor: string;
+  email: string | null;
+  institution: string;
+  course: string;
+  days: string[];
+  times: string;
+  location: string;
+  teachingHours: string;
+  teachingLocation: string;
+  term: string;
+  comments?: string | null;
   status: string;
-  source: string;
-  officeHours: TimeSlot[];
-  teachingHours: TimeSlot[];
+  validatedBy?: string | null;
+  officeHourSlots?: TimeSlot[];
+  teachingHourSlots?: TimeSlot[];
+  source?: string;
 }
 
 export interface TimeSlot {
   dayOfWeek: string;
   startHour: string;
   startMinute: string;
-  startAmPm: string;
+  startAmPm: "AM" | "PM";
   endHour: string;
   endMinute: string;
-  endAmPm: string;
+  endAmPm: "AM" | "PM";
   location: string;
-  comments: string;
+  comments?: string;
 } 
