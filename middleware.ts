@@ -14,6 +14,7 @@ const publicRoutes = [
 // Routes that can always be accessed without authentication checks
 const ignoredRoutes = [
   "/api/webhook",
+  "/api/process-sqs", // we check auth explicitly in the process-sqs route
   "/_next/static",
   "/_next/image",
   "/favicon.ico",

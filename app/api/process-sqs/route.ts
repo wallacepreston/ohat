@@ -59,6 +59,33 @@ export const runtime = 'nodejs'; // Use Node.js runtime
  */
 export async function POST(request: NextRequest) {
   try {
+    // Check for API key in Authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Missing or invalid Authorization header' },
+        { status: 401 }
+      );
+    }
+
+    const apiKey = authHeader.split(' ')[1];
+    const expectedApiKey = process.env.LAMBDA_API_KEY;
+
+    if (!expectedApiKey) {
+      console.error('LAMBDA_API_KEY environment variable is not set');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    if (apiKey !== expectedApiKey) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Invalid API key' },
+        { status: 401 }
+      );
+    }
+
     // Process the SQS messages
     const result = await readInstructorCrawlMessages();
     
