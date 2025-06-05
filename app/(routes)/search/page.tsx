@@ -12,8 +12,17 @@ import { useSocket } from '@/app/hooks/useSocket';
 import { processBatchOfficeHours } from "@/app/lib/api-client"
 import { convertToTimeSlots } from "@/app/utils/timeUtils"
 
+// Extended result type that includes both success and exception statuses
+type ExtendedBatchResult = {
+  contactId: string;
+  status: "SUCCESS" | "PARTIAL_SUCCESS" | "NOT_FOUND" | "ERROR";
+  officeHours: BatchResponseResult['officeHours'];
+  teachingHours: BatchResponseResult['teachingHours'];
+  source: string;
+};
+
 export default function SearchPage() {
-  const [results, setResults] = useState<BatchResponseResult[]>([])
+  const [results, setResults] = useState<ExtendedBatchResult[]>([])
   const [instructors, setInstructors] = useState<BatchRequestInstructor[]>([])
   const { addStatusMessage, clearStatusMessages } = useStatus()
   const { isLoading, setLoading, setLoadingMessage } = useLoading()
@@ -27,11 +36,12 @@ export default function SearchPage() {
 
   // Set up Socket.IO connection
   useSocket((data: ProcessedOfficeHours) => {
-    // Convert ProcessedOfficeHours to BatchResponseResult
-    const batchResult: BatchResponseResult = {
+    // Convert ProcessedOfficeHours to ExtendedBatchResult
+    const batchResult: ExtendedBatchResult = {
       contactId: data.instructor, // Use instructor name as contactId
       status: data.status === "SUCCESS" ? "SUCCESS" : 
-              data.status === "PARTIAL_SUCCESS" ? "PARTIAL_SUCCESS" : "NOT_FOUND",
+              data.status === "PARTIAL_SUCCESS" ? "PARTIAL_SUCCESS" : 
+              data.status === "ERROR" ? "ERROR" : "NOT_FOUND",
       officeHours: convertToTimeSlots(data.days || [], data.times || "", data.location || ""),
       teachingHours: convertToTimeSlots([], data.teachingHours || "", data.teachingLocation || ""),
       source: data.validatedBy || "web_search"
@@ -57,6 +67,24 @@ export default function SearchPage() {
     setStatusMessage(`Received update for ${batchResult.contactId}`);
     setTimeout(() => setStatusMessage(''), 3000); // Clear after 3 seconds
   });
+
+  // Helper function to combine results and exceptions into a single array
+  const combineResultsAndExceptions = (batchResponse: BatchResponse): ExtendedBatchResult[] => {
+    const combined: ExtendedBatchResult[] = [...batchResponse.results];
+    
+    // Convert exceptions to ExtendedBatchResult format
+    for (const exception of batchResponse.exceptions) {
+      combined.push({
+        contactId: exception.contactId,
+        status: exception.status,
+        officeHours: [],
+        teachingHours: [],
+        source: `exception: ${exception.reason}`
+      });
+    }
+    
+    return combined;
+  };
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -93,10 +121,11 @@ export default function SearchPage() {
         
         // Use the batch API directly
         const batchResponse = await processBatchOfficeHours(parsedData as BatchRequest);
-        setResults(batchResponse.results);
+        const combinedResults = combineResultsAndExceptions(batchResponse);
+        setResults(combinedResults);
         
-        // Calculate counts based on the new data
-        displayStatusMessages(batchResponse.results);
+        // Calculate counts based on the combined data
+        displayStatusMessages(combinedResults);
       }
       // Case 2: Array of instructor data
       else if (Array.isArray(parsedData)) {
@@ -118,10 +147,11 @@ export default function SearchPage() {
         setInstructors(batchRequest.instructors);
         
         const batchResponse = await processBatchOfficeHours(batchRequest);
-        setResults(batchResponse.results);
+        const combinedResults = combineResultsAndExceptions(batchResponse);
+        setResults(combinedResults);
         
-        // Calculate counts based on the new data
-        displayStatusMessages(batchResponse.results);
+        // Calculate counts based on the combined data
+        displayStatusMessages(combinedResults);
       }
       // Case 3: Single instructor
       else if (typeof parsedData === 'object') {
@@ -143,10 +173,11 @@ export default function SearchPage() {
         setInstructors(batchRequest.instructors);
         
         const batchResponse = await processBatchOfficeHours(batchRequest);
-        setResults(batchResponse.results);
+        const combinedResults = combineResultsAndExceptions(batchResponse);
+        setResults(combinedResults);
         
-        // Calculate counts based on the new data
-        displayStatusMessages(batchResponse.results);
+        // Calculate counts based on the combined data
+        displayStatusMessages(combinedResults);
       }
     } catch (error) {
       console.error("Error processing data:", error)
@@ -157,7 +188,7 @@ export default function SearchPage() {
   }
 
   // Helper function to display status messages based on the provided data
-  const displayStatusMessages = (data: BatchResponseResult[]) => {
+  const displayStatusMessages = (data: ExtendedBatchResult[]) => {
     if (data.length === 0) {
       addStatusMessage('warning', 'No results were returned')
       return;
@@ -167,6 +198,7 @@ export default function SearchPage() {
     const successCount = data.filter(item => item.status === "SUCCESS").length
     const partialCount = data.filter(item => item.status === "PARTIAL_SUCCESS").length
     const notFoundCount = data.filter(item => item.status === "NOT_FOUND").length
+    const errorCount = data.filter(item => item.status === "ERROR").length
     
     // Add a message for each status type with results
     if (successCount > 0) {
@@ -179,6 +211,10 @@ export default function SearchPage() {
     
     if (notFoundCount > 0) {
       addStatusMessage('warning', `Could not find information for ${notFoundCount} instructor(s)`)
+    }
+    
+    if (errorCount > 0) {
+      addStatusMessage('error', `Errors occurred for ${errorCount} instructor(s)`)
     }
   }
 
@@ -202,7 +238,7 @@ export default function SearchPage() {
       </form>
 
       <ResultsTable 
-        results={results}
+        results={results as any}
         onClearResults={clearResults}
         instructors={instructors}
       />
