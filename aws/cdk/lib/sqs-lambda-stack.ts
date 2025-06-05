@@ -79,7 +79,18 @@ export class SqsLambdaStack extends cdk.Stack {
     const sqsProcessorLambda = new lambda.Function(this, 'OHATInstructorEmailProcessor', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'sqs-processor.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda'), {
+        bundling: {
+          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
+          command: [
+            'bash', '-c', [
+              'cp -r /asset-input/* /asset-output/',
+              'cd /asset-output',
+              'npm install --production'
+            ].join(' && ')
+          ]
+        }
+      }),
       timeout: cdk.Duration.seconds(60),
       environment: {
         // SendGrid configuration

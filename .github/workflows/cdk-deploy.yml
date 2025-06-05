@@ -29,9 +29,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install dependencies
+      - name: Install CDK dependencies
         run: npm ci
         working-directory: ./aws/cdk
+
+      - name: Install Lambda dependencies
+        run: npm install
+        working-directory: ./aws/cdk/lambda
 
       # # KEEP COMMENTED OUT FOR FUTURE REFERENCE
       # - name: Bootstrap CDK environment
@@ -56,7 +60,7 @@ jobs:
           EMAIL_QUEUE_URL: ${{ secrets.EMAIL_QUEUE_URL }}
           # SendGrid configuration
           SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-          SENDGRID_FROM_EMAIL: ${{ secrets.SENDGRID_FROM_EMAIL }}
+          SENDGRID_FROM_EMAIL: 'instructors@em2746.devrocket.io'
           SENDGRID_INSTRUCTOR_REQUEST_TEMPLATE_ID: ${{ secrets.SENDGRID_INSTRUCTOR_REQUEST_TEMPLATE_ID }}
           SENDGRID_SEND_EMAILS_ENABLED: 'true'
           SENDGRID_SEND_REAL_EMAILS: 'false'
