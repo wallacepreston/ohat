@@ -82,8 +82,14 @@ export class SqsLambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       timeout: cdk.Duration.seconds(60),
       environment: {
-        VERCEL_APP_URL: process.env.VERCEL_APP_URL || 'https://your-vercel-app.vercel.app',
-        LAMBDA_API_KEY: process.env.LAMBDA_API_KEY || 'super-secret-api-key'
+        // SendGrid configuration
+        SENDGRID_API_KEY: process.env.SENDGRID_API_KEY || '',
+        SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL || 'instructors@mheducation.com',
+        SENDGRID_INSTRUCTOR_REQUEST_TEMPLATE_ID: process.env.SENDGRID_INSTRUCTOR_REQUEST_TEMPLATE_ID || '',
+        SENDGRID_SEND_EMAILS_ENABLED: process.env.SENDGRID_SEND_EMAILS_ENABLED || 'false',
+        SENDGRID_SEND_REAL_EMAILS: process.env.SENDGRID_SEND_REAL_EMAILS || 'false',
+        SENDGRID_TO_EMAIL: process.env.SENDGRID_TO_EMAIL || 'test@example.com',
+        SUPPORT_EMAIL: process.env.SUPPORT_EMAIL || 'instructors@mheducation.com'
       },
     });
 

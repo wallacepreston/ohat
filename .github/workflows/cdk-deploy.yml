@@ -53,6 +53,12 @@ jobs:
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
           CDK_DEPLOY_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEPLOY_REGION: ${{ secrets.AWS_REGION }}
-          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
-          LAMBDA_API_KEY: ${{ secrets.LAMBDA_API_KEY }}
-          EMAIL_QUEUE_URL: ${{ secrets.EMAIL_QUEUE_URL }} 
+          EMAIL_QUEUE_URL: ${{ secrets.EMAIL_QUEUE_URL }}
+          # SendGrid configuration
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SENDGRID_FROM_EMAIL: ${{ secrets.SENDGRID_FROM_EMAIL }}
+          SENDGRID_INSTRUCTOR_REQUEST_TEMPLATE_ID: ${{ secrets.SENDGRID_INSTRUCTOR_REQUEST_TEMPLATE_ID }}
+          SENDGRID_SEND_EMAILS_ENABLED: 'true'
+          SENDGRID_SEND_REAL_EMAILS: 'false'
+          SENDGRID_TO_EMAIL: ${{ secrets.SENDGRID_TO_EMAIL }}
+          SUPPORT_EMAIL: 'instructors@em2746.devrocket.io'

@@ -1,0 +1,9 @@
+{
+  "name": "sqs-processor-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to process SQS messages and send emails",
+  "main": "sqs-processor.js",
+  "dependencies": {
+    "@sendgrid/mail": "^7.7.0"
+  }
+} 

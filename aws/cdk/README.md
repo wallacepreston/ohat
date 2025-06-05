@@ -1,6 +1,6 @@
-# SQS to Lambda Integration for Vercel App
+# Event-Driven Lambda Email Processor
 
-This CDK project sets up an AWS Lambda function that is triggered by messages in an SQS queue. The Lambda function calls your Vercel application's API endpoint to process SQS messages.
+This CDK project sets up an AWS Lambda function that is triggered by new SQS messages to process and send emails directly using SendGrid. This eliminates the need for API calls to your Vercel application and processes messages immediately when they arrive.
 
 ## Prerequisites
 
@@ -21,9 +21,14 @@ This CDK project sets up an AWS Lambda function that is triggered by messages in
    Create a `.env` file in the `aws/cdk` directory with the following variables:
 
    ```bash
-   VERCEL_APP_URL=https://your-vercel-app.vercel.app
-   LAMBDA_API_KEY=super-secret-api-key
    EMAIL_QUEUE_URL=https://sqs.your-region.amazonaws.com/your-account-id/your-queue-name
+   SENDGRID_API_KEY=your-sendgrid-api-key
+   SENDGRID_FROM_EMAIL=instructors@mheducation.com
+   SENDGRID_INSTRUCTOR_REQUEST_TEMPLATE_ID=d-your-template-id
+   SENDGRID_SEND_EMAILS_ENABLED=true
+   SENDGRID_SEND_REAL_EMAILS=false
+   SENDGRID_TO_EMAIL=test@example.com
+   SUPPORT_EMAIL=instructors@mheducation.com
    ```
 
    Note: If you don't provide an `EMAIL_QUEUE_URL`, a new SQS queue will be created.
@@ -34,22 +39,20 @@ This CDK project sets up an AWS Lambda function that is triggered by messages in
    cdk deploy
    ```
 
-## Vercel Environment Variables
-
-You need to add the following environment variable to your Vercel project:
-
-- `LAMBDA_API_KEY`: The same secret key you used in the Lambda function environment variable
-
 ## How It Works
 
-1. The AWS Lambda function is triggered when a message is added to the SQS queue
-2. The Lambda function makes an HTTP request to your Vercel app's API endpoint `/api/process-sqs`
-3. The Vercel API endpoint processes the SQS messages by calling your `readInstructorCrawlMessages` function
+1. When a new message is added to the SQS queue, AWS automatically triggers the Lambda function
+2. The Lambda function receives a batch of up to 10 messages from SQS
+3. For each message, the Lambda sends an email using SendGrid
+4. Successfully processed messages are automatically deleted from the queue
+5. Failed messages are returned to the queue for automatic retry
 
 ## Security
 
-- Communication between Lambda and Vercel is secured with an API key
-- Make sure to keep the `LAMBDA_API_KEY` secret and use a strong, unique key
+- The SendGrid API key is securely stored as an environment variable in the Lambda function
+- Make sure to keep your `SENDGRID_API_KEY` secret and rotate it regularly
+- Email sending can be disabled by setting `SENDGRID_SEND_EMAILS_ENABLED=false`
+- In development, emails can be redirected to a test address by setting `SENDGRID_SEND_REAL_EMAILS=false`
 
 ## Customization
 
