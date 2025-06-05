@@ -111,11 +111,11 @@ export class SqsLambdaStack extends cdk.Stack {
     const queueRegion = queueRegionMatch ? queueRegionMatch[1] : cdk.Stack.of(this).region;
     
     if (queueRegion === cdk.Stack.of(this).region) {
-      sqsProcessorLambda.addEventSource(new lambdaEventSources.SqsEventSource(queue, {
-        batchSize: 10, // Process up to 10 messages at a time (maximum recommended)
-        maxBatchingWindow: cdk.Duration.seconds(60), // Wait up to 60 seconds to collect messages
-        enabled: true,
-      }));
+             sqsProcessorLambda.addEventSource(new lambdaEventSources.SqsEventSource(queue, {
+         batchSize: 10, // Process up to 10 messages at a time (maximum recommended)
+         maxBatchingWindow: cdk.Duration.seconds(10), // Wait up to 10 seconds to collect messages
+         enabled: true,
+       }));
       
       // Grant the Lambda function permission to read from the SQS queue
       queue.grantConsumeMessages(sqsProcessorLambda);
