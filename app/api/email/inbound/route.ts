@@ -4,6 +4,8 @@ import { queueInstructorCrawl } from '@/app/services/sqsService';
 import { emitOfficeHoursUpdate } from '@/app/lib/socket';
 import { OfficeHoursStatus, ProcessedOfficeHours } from '@/types/salesforce';
 
+const dev = process.env.NODE_ENV !== 'production';
+
 /**
  * API route handler for receiving SendGrid Inbound Parse webhook
  * 
@@ -60,8 +62,12 @@ export async function POST(req: NextRequest) {
     });
 
     // TODO - Make API call to SFDC
-    // Emit Socket.IO event with the processed data
-    emitOfficeHoursUpdate(result);
+    if (dev) {
+      // Emit Socket.IO event with the processed data
+      emitOfficeHoursUpdate(result);
+    } else {
+      console.log('TODO: send instructor office hours to SFDC. Skipping Socket.IO event in production.');
+    }
     
     // Handle "not found" status
     if (result.status === OfficeHoursStatus.NOT_FOUND && result.email) {
