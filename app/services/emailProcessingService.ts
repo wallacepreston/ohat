@@ -267,24 +267,32 @@ export async function handleInboundParseWebhook(
     
     // Extract contact_id from the email HTML or text
     let contactId = null;
-
+    
     console.log(`HTML: ${html}`);
     
     // Try to extract from HTML first (more reliable)
     if (html) {
-      const contactIdMatch = html.match(/contact_id:\s*([A-Za-z0-9]+)/);
+      const contactIdMatch = html.match(/contact_id:\s*([A-Za-z0-9]{15,18})/);
       if (contactIdMatch) {
         contactId = contactIdMatch[1];
       }
     }
-
     
     // Fallback to text if not found in HTML
     if (!contactId && text) {
       console.log(`Text: ${text}`);
-      const contactIdMatch = text.match(/contact_id:\s*([A-Za-z0-9]+)/);
+      const contactIdMatch = text.match(/contact_id:\s*([A-Za-z0-9]{15,18})/);
       if (contactIdMatch) {
         contactId = contactIdMatch[1];
+      }
+    }
+    
+    // Validate the extracted contact_id
+    if (contactId) {
+      const salesforceIdPattern = /^[A-Za-z0-9]{15,18}$/;
+      if (!salesforceIdPattern.test(contactId)) {
+        console.warn(`Extracted contact_id "${contactId}" does not match Salesforce ID format`);
+        contactId = null; // Reset to null if invalid
       }
     }
     

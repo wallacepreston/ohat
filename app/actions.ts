@@ -269,7 +269,7 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
             item.Decision_Maker_Type__c === 'YES') {
           console.log(`Queueing crawl for key decision maker with no office hours: ${item.Contact_Name__c}`)
           const queued = await queueInstructorCrawl(
-            item.Account_ID__c, 
+            item.Contact_ID__c, 
             item.Contact_Name__c,
             item.Contact_Email__c,
             item.Account_Name__c || "Unknown Institution"
@@ -956,7 +956,8 @@ export async function processBatchOfficeHours(batchRequest: BatchRequest): Promi
           Contact_Email__c: instructor.email,
           School_Course_Name__c: instructor.department,
           // Mark as key decision maker if specified
-          Decision_Maker_Type__c: instructor.isKeyDecisionMaker ? "YES" : "NO"
+          Decision_Maker_Type__c: instructor.isKeyDecisionMaker ? "YES" : "NO",
+          Contact_ID__c: instructor.contactId
         };
         
         // Use our existing function to process this instructor
