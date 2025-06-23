@@ -265,6 +265,31 @@ export async function handleInboundParseWebhook(
     // Look for any "original message" markers in the email body to separate out the reply
     const emailText = text;
     
+    // Extract contact_id from the email HTML or text
+    let contactId = null;
+
+    console.log(`HTML: ${html}`);
+    
+    // Try to extract from HTML first (more reliable)
+    if (html) {
+      const contactIdMatch = html.match(/contact_id:\s*([A-Za-z0-9]+)/);
+      if (contactIdMatch) {
+        contactId = contactIdMatch[1];
+      }
+    }
+
+    
+    // Fallback to text if not found in HTML
+    if (!contactId && text) {
+      console.log(`Text: ${text}`);
+      const contactIdMatch = text.match(/contact_id:\s*([A-Za-z0-9]+)/);
+      if (contactIdMatch) {
+        contactId = contactIdMatch[1];
+      }
+    }
+    
+    console.log(`Extracted contact_id: ${contactId}`);
+    
     // Process the email content
     const result = await processInstructorEmailResponse(
       emailText,
@@ -276,7 +301,14 @@ export async function handleInboundParseWebhook(
     );
     
     console.log(`Processed email from ${senderName}. Status: ${result.status}`);
-    return result;
+    
+    // Add contact_id to the result if found
+    const resultWithContactId = {
+      ...result,
+      contactId: contactId
+    };
+    
+    return resultWithContactId;
     
   } catch (error) {
     console.error("Error processing inbound email webhook:", error);

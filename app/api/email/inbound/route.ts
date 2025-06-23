@@ -3,6 +3,7 @@ import { handleInboundParseWebhook } from '@/app/services/emailProcessingService
 import { queueInstructorCrawl } from '@/app/services/sqsService';
 import { emitOfficeHoursUpdate } from '@/app/lib/socket';
 import { OfficeHoursStatus, ProcessedOfficeHours } from '@/types/salesforce';
+import { salesforceService } from '@/app/services/salesforceService';
 
 const dev = process.env.NODE_ENV !== 'production';
 
@@ -52,14 +53,7 @@ export async function POST(req: NextRequest) {
     // Common processing logic for both payload types
     const result = await handleInboundParseWebhook(payload);
     
-    console.log('Processed email response:', {
-      instructor: result.instructor,
-      email: result.email,
-      status: result.status,
-      days: result.days,
-      times: result.times,
-      location: result.location
-    });
+    console.log('Processed email response:', result);
 
     // TODO - Make API call to SFDC
     if (dev) {
@@ -67,6 +61,9 @@ export async function POST(req: NextRequest) {
       emitOfficeHoursUpdate(result);
     } else {
       console.log('TODO: send instructor office hours to SFDC. Skipping Socket.IO event in production.');
+      
+      const contactHourId = await salesforceService.createContactHour(result.contactId, result);
+      console.log(`Created Contact Hour record for Contact ID: ${result.contactId}. Contact Hour ID: ${contactHourId}`);
     }
     
     // Handle "not found" status

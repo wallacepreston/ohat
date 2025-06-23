@@ -10,7 +10,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
  */
 export interface InstructorEmailTemplateData {
   instructor_name: string;
-  instructor_id: string;
+  contact_id: string;
   institution: string;
   current_date: string;
   support_email: string;
@@ -101,19 +101,19 @@ export async function sendTemplateEmail(
  * Sends an instructor notification email
  * @param email - Instructor's email address
  * @param instructorName - Instructor's name
- * @param instructorId - Instructor's ID
+ * @param contactId - Instructor's ID
  * @param institution - Instructor's institution
  * @returns Promise that resolves to boolean indicating success
  */
 export async function sendInstructorEmail(
   email: string,
   instructorName: string,
-  instructorId: string,
+  contactId: string,
   institution: string
 ): Promise<boolean> {
   const templateData: InstructorEmailTemplateData = {
     instructor_name: instructorName || 'Professor',
-    instructor_id: instructorId,
+    contact_id: contactId,
     institution: institution,
     current_date: new Date().toLocaleDateString(),
     support_email: process.env.SUPPORT_EMAIL || 'instructors@mheducation.com',

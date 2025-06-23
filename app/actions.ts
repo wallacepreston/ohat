@@ -401,7 +401,7 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
                 contactId: contactId,
                 status: result.status
               });
-              const contactHourId =await salesforceService.createContactHour(contactId, formattedResult);
+              const contactHourId = await salesforceService.createContactHour(contactId, formattedResult);
               console.log(`Created Contact Hour record for Contact ID: ${contactId}`);
               resultsToReturn.push({
                 ...formattedResult,

@@ -68,6 +68,7 @@ export const BatchResponseSchema = z.object({
 
 // ProcessedOfficeHours schema
 export const ProcessedOfficeHoursSchema = z.object({
+  contactId: z.string(),
   instructor: z.string(),
   email: z.string().optional().nullable().default(""),
   institution: z.string(),
