@@ -269,7 +269,7 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
             item.Decision_Maker_Type__c === 'YES') {
           console.log(`Queueing crawl for key decision maker with no office hours: ${item.Contact_Name__c}`)
           const queued = await queueInstructorCrawl(
-            item.Account_ID__c || item.Contact_Name__c, 
+            item.Account_ID__c, 
             item.Contact_Name__c,
             item.Contact_Email__c,
             item.Account_Name__c || "Unknown Institution"
@@ -338,7 +338,7 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
             parsedData[0].Decision_Maker_Type__c === 'YES') {
           console.log(`Queueing crawl for key decision maker with no office hours found in photo: ${results[0].instructor}`)
           const queued = await queueInstructorCrawl(
-            parsedData[0].Account_ID__c || results[0].instructor, 
+            parsedData[0].Account_ID__c, 
             results[0].instructor,
             parsedData[0].Contact_Email__c,
             results[0].institution

@@ -23,14 +23,14 @@ const processedMessages: Record<string, {
 
 /**
  * Sends an SQS message to queue a crawl task for an instructor
- * @param instructorId - The ID of the instructor to crawl
+ * @param contactId - The ID of the instructor to crawl
  * @param instructorName - The name of the instructor to crawl
  * @param email - The instructor's email
  * @param institution - The instructor's institution name
  * @returns Promise that resolves when message is sent
  */
 export async function queueInstructorCrawl(
-  instructorId: string, 
+  contactId: string, 
   instructorName: string,
   email: string,
   institution: string
@@ -39,8 +39,8 @@ export async function queueInstructorCrawl(
     // Prepare the message to send to SQS
     const command = new SendMessageCommand({
       QueueUrl: process.env.EMAIL_QUEUE_URL || '',
-      MessageBody: JSON.stringify({ 
-        instructorId, 
+      MessageBody: JSON.stringify({
+        contactId, 
         instructorName,
         email,
         institution,
@@ -50,7 +50,7 @@ export async function queueInstructorCrawl(
 
     // Send the message to SQS
     await sqs.send(command);
-    console.log(`Successfully queued email to send for instructor: ${instructorId} - ${instructorName}`);
+    console.log(`Successfully queued email to send for instructor: ${contactId} - ${instructorName}`);
     return true;
   } catch (error) {
     console.error('Error sending SQS message:', error);
@@ -105,7 +105,7 @@ export async function readInstructorCrawlMessages(
         const emailSent = await sendInstructorEmail(
           messageBody.email,
           messageBody.instructorName,
-          messageBody.instructorId,
+          messageBody.contactId,
           messageBody.institution
         );
         

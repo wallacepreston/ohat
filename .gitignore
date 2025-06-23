@@ -56,3 +56,6 @@ next-env.d.ts
 
 # sqlite
 *.sqlite
+
+# local seed files
+app/api/seed/local.*.json

@@ -75,10 +75,10 @@ async function sendTemplateEmail(to, templateId, dynamicData) {
 /**
  * Sends an instructor notification email
  */
-async function sendInstructorEmail(email, instructorName, instructorId, institution) {
+async function sendInstructorEmail(email, instructorName, contactId, institution) {
   const templateData = {
     instructor_name: instructorName || 'Professor',
-    instructor_id: instructorId,
+    contact_id: contactId,
     institution: institution,
     current_date: new Date().toLocaleDateString(),
     support_email: process.env.SUPPORT_EMAIL || 'instructors@mheducation.com',
@@ -119,7 +119,7 @@ exports.handler = async (event) => {
       const emailSent = await sendInstructorEmail(
         messageBody.email,
         messageBody.instructorName,
-        messageBody.instructorId,
+        messageBody.contactId,
         messageBody.institution
       );
       
