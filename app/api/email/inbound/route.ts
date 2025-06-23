@@ -61,9 +61,14 @@ export async function POST(req: NextRequest) {
       emitOfficeHoursUpdate(result);
     } else {
       console.log('TODO: send instructor office hours to SFDC. Skipping Socket.IO event in production.');
-      
-      const contactHourId = await salesforceService.createContactHour(result.contactId, result);
-      console.log(`Created Contact Hour record for Contact ID: ${result.contactId}. Contact Hour ID: ${contactHourId}`);
+      const { contactId } = result;
+
+      const formattedResult = salesforceService.formatContactHourResult({
+        ...result,
+        contactId: contactId,
+        status: result.status
+      });
+      const contactHourId = await salesforceService.createContactHour(contactId, formattedResult);      console.log(`Created Contact Hour record for Contact ID: ${result.contactId}. Contact Hour ID: ${contactHourId}`);
     }
     
     // Handle "not found" status
