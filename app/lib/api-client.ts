@@ -166,7 +166,7 @@ export function convertLegacyToBatchRequest(
  * Process a photo upload with associated instructor data
  */
 export async function processPhotoUpload(
-  salesforceData: any,
+  contactId: string,
   photo: File
 ): Promise<ProcessedOfficeHours[]> {
   try {
@@ -177,7 +177,7 @@ export async function processPhotoUpload(
     formData.append('photo', photo);
     
     // Add the Salesforce data as JSON
-    formData.append('salesforceData', JSON.stringify(salesforceData));
+    formData.append('contactId', contactId);
     
     // Send the request to our API endpoint
     const response = await fetch('/api/photo-upload', {

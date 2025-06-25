@@ -64,32 +64,13 @@ export default function UploadPage() {
     }
     
     try {
-      const batchId = `batch-${Date.now()}`
-      const batchRequest: BatchRequest = {
-        batchId,
-        accountId: institution.trim(),
-        institution: institution.trim(),
-        instructors: [{
-          contactId: contactId.trim() || `contact-${Date.now()}`,
-          name: instructorName.trim(),
-          email: "",
-          department: ""
-        }] as [BatchRequestInstructor, ...BatchRequestInstructor[]]
-      }
       
       let data: BatchResponse['results'] = []
       
       try {
-        if (photoFile) {
-          const photoResults = await processPhotoUpload(batchRequest, photoFile)
-          console.log('photoResults:', photoResults)
-          
-          // Use the results directly from the photo upload
-          data = photoResults as unknown as BatchResponse['results']
-        } else {
-          const batchResponse = await processBatchOfficeHours(batchRequest)
-          data = batchResponse.results
-        }
+        const photoResults = await processPhotoUpload(contactId, photoFile)
+        console.log('photoResults:', photoResults)
+        data = photoResults as unknown as BatchResponse['results']
       } catch (error) {
         console.warn("API failed:", error)
         addStatusMessage('error', 'Failed to process photo. Please try again.')

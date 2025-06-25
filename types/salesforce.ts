@@ -170,16 +170,7 @@ export const SalesforceDataSchema = z.object({
 
 // Form submission schema for photo uploads
 export const PhotoUploadSchema = z.object({
-  salesforceData: z.string().refine((data) => {
-    try {
-      const parsed = JSON.parse(data);
-      return BatchRequestSchema.safeParse(parsed).success;
-    } catch {
-      return false;
-    }
-  }, {
-    message: "Invalid JSON data. Must contain valid BatchRequest data."
-  }),
+  contactId: z.string(),
   photo: z.instanceof(File, { 
     message: "Photo must be a valid file" 
   })

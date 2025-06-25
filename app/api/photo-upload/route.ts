@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
     
     // Validate the request using Zod
     const result = PhotoUploadSchema.safeParse({
-      salesforceData: formData.get('salesforceData'),
+      contactId: formData.get('contactId'),
       photo: formData.get('photo')
     });
     

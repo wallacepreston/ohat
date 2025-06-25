@@ -9,7 +9,7 @@ import type {
   TimeSlot,
   BatchResponseResult
 } from "@/types/salesforce"
-import { OfficeHoursStatus } from "@/types/salesforce"
+import { OfficeHoursStatus, PhotoUploadSchema } from "@/types/salesforce"
 import { determineResultStatus, validateResultStatus } from "@/app/utils/status"
 import { ChatOpenAI } from "@langchain/openai"
 import { HumanMessage, SystemMessage } from "@langchain/core/messages"
@@ -318,7 +318,11 @@ async function processMultipleWithPerplexity(instructorDataArray: any[]): Promis
 export async function processOfficeHours(formData: FormData): Promise<ProcessedOfficeHours[]> {
   try {
     const rawData = formData.get("salesforceData") as string
+    const contactId = formData.get("contactId") as string
     const parsedData = JSON.parse(rawData)
+    
+    console.log('parsedData:', parsedData)
+    console.log('contactId:', contactId)
     
     // Check if a photo is included
     const photo = formData.get("photo") as File | null
@@ -360,7 +364,7 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
     else {
       console.log('Processing single record')
       if (photo) {
-        const results = await processPhotoWithLangChain(parsedData, photo)
+        const results = await processPhotoWithLangChain(contactId, photo)
         
         // Queue SQS message if photo processing didn't find office hours AND instructor is a key decision maker
         if (results.length > 0 && 
@@ -390,19 +394,19 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
               result.status === OfficeHoursStatus.PARTIAL_SUCCESS || 
               result.status === OfficeHoursStatus.VALIDATED) {
 
-            const contactId = parsedData?.instructors[0]?.contactId;
-            if (!contactId) {
+            const contactIdToUse = parsedData?.instructors[0]?.contactId || contactId;
+            if (!contactIdToUse) {
               throw new Error("Contact ID not found in Salesforce data")
             }
             
             try {
               const formattedResult = salesforceService.formatContactHourResult({
                 ...result,
-                contactId: contactId,
+                contactId: contactIdToUse,
                 status: result.status
               });
-              const contactHourId = await salesforceService.createContactHour(contactId, formattedResult);
-              console.log(`Created Contact Hour record for Contact ID: ${contactId}`);
+              const contactHourId = await salesforceService.createContactHour(contactIdToUse, formattedResult);
+              console.log(`Created Contact Hour record for Contact ID: ${contactIdToUse}`);
               resultsToReturn.push({
                 ...formattedResult,
                 salesforce: {
@@ -416,7 +420,7 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
                 created: true
               };
             } catch (error) {
-              console.error(`Failed to create Contact Hour record for Contact ID: ${contactId}:`, error);
+              console.error(`Failed to create Contact Hour record for Contact ID: ${contactIdToUse}:`, error);
               
               resultsToReturn.push({
                 ...result,
@@ -640,24 +644,17 @@ function createPerplexityPrompt(instructor: string, institution: string, course:
 }
 
 // LangChain implementation for photo processing with combined search
-async function processPhotoWithLangChain(searchData: any, photo: File): Promise<ProcessedOfficeHours[]> {
+async function processPhotoWithLangChain(contactId: string, photo: File): Promise<ProcessedOfficeHours[]> {
   try {
     // Validate and convert input data
     let validatedData;
     try {
       // Try parsing as raw Salesforce data first
-      validatedData = salesforceDataSchema.parse(searchData);
+      validatedData = PhotoUploadSchema.parse({ contactId, photo });
     } catch (error) {
       console.warn("Input data doesn't match Salesforce schema, using as-is:", error);
-      validatedData = searchData; // Use as-is if it doesn't match the schema
+      validatedData = { contactId, photo }; // Use as-is if it doesn't match the schema
     }
-    
-    // Convert from Salesforce format to our internal format
-    const convertedData = convertSalesforceDataToInternal(validatedData);
-    
-    // Extract key information for the search
-    const instructor = convertedData.instructor;
-    const institution = convertedData.institution;
 
     // Convert photo to base64
     const photoBytes = await photo.arrayBuffer()
@@ -666,10 +663,6 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
     // Vision prompt
     const visionPrompt = `
     Analyze this image which likely contains office hours information for a professor.
-    
-    Context:
-    Institution: ${institution}
-    Instructor: ${instructor}
     
     Extract all visible information about:
     1. Days and times of office hours
@@ -757,10 +750,6 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
         const combinedPrompt = `
         Search for and extract office hours information for this professor by searching online. The office hours should be for the current term, but if there are none found, then search for ANY term, past, present, or future.
         
-        Context:
-        Institution: ${institution}
-        Instructor: ${instructor}
-        
         I also have a photo with information about this professor's office hours. Here's what was found in the photo:
         
         ${imageAnalysisText}
@@ -829,9 +818,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
           console.error("Error parsing response:", error)
           // Return a error result if parsing fails
           return {
-            instructor: instructor,
             email: "",
-            institution: institution,
             days: [],
             times: "",
             location: "",
@@ -886,9 +873,7 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
     } catch (error) {
       console.error("Error in LangChain workflow:", error)
       return [{
-        instructor: instructor,
         email: "",
-        institution: institution,
         days: [],
         times: "",
         location: "",
@@ -908,10 +893,8 @@ async function processPhotoWithLangChain(searchData: any, photo: File): Promise<
   } catch (error) {
     console.error("Error in processPhotoWithLangChain:", error)
     return [{
-      instructor: searchData.Contact_Name__c || "Unknown Instructor",
-      email: searchData.Contact_Email__c || "",
-      institution: searchData.Account_Name__c || "Unknown Institution",
-      course: searchData.School_Course_Name__c || searchData.Division || "Unknown Course",
+      email: "",
+      course: "",
       days: [],
       times: "",
       location: "",
@@ -1070,10 +1053,8 @@ function getActionTaken(
 // Helper function to create error result
 function createErrorResult(data: any) {
   return {
-    instructor: data.Contact_Name__c || "Unknown Instructor",
-    email: data.Contact_Email__c || "",
-    institution: data.Account_Name__c || "Unknown Institution",
-    course: data.School_Course_Name__c || data.Division || "Unknown Course",
+    email: "",
+    course: "",
     days: [],
     times: "",
     location: "",

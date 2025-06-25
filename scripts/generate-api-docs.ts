@@ -373,14 +373,13 @@ function generateOpenApiSpec() {
                 schema: {
                   type: 'object',
                   required: [
-                    'salesforceData',
+                    'contactId',
                     'photo'
                   ],
                   properties: {
-                    salesforceData: {
+                    contactId: {
                       type: 'string',
-                      format: 'json',
-                      description: 'JSON string containing instructor and institution data'
+                      description: 'Contact ID of the instructor'
                     },
                     photo: {
                       type: 'string',
@@ -542,78 +541,6 @@ function generateOpenApiSpec() {
                       message: {
                         type: 'string',
                         example: 'SendGrid Inbound Parse webhook endpoint is active'
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      '/api/process-sqs': {
-        post: {
-          summary: 'Process SQS messages for instructor crawls',
-          description: 'Processes SQS messages containing instructor information to crawl for office hours data.',
-          tags: ['SQS'],
-          security: [
-            {
-              BearerAuth: []
-            }
-          ],
-          responses: {
-            '200': {
-              description: 'Successful operation',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      success: {
-                        type: 'boolean',
-                        example: true
-                      },
-                      message: {
-                        type: 'string',
-                        example: 'SQS messages processed successfully'
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '401': {
-              description: 'Unauthorized - Invalid or missing API key',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      error: {
-                        type: 'string',
-                        example: 'Unauthorized'
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '500': {
-              description: 'Server error',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      success: {
-                        type: 'boolean',
-                        example: false
-                      },
-                      error: {
-                        type: 'string'
-                      },
-                      details: {
-                        type: 'string'
                       }
                     }
                   }
