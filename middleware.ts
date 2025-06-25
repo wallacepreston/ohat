@@ -16,6 +16,7 @@ const ignoredRoutes = [
   "/api/webhook",
   "/api/process-sqs", // we check auth explicitly in the process-sqs route
   "/api/email/inbound", // sendgrid inbound parse doesn't support auth
+  "/api/swagger.json", // API documentation should be publicly accessible
   "/_next/static",
   "/_next/image",
   "/favicon.ico",

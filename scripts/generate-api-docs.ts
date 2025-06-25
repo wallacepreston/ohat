@@ -72,7 +72,13 @@ const createProcessedOfficeHoursSchema = () => z.object({
   teachingLocation: z.string(),
   term: z.string(),
   status: z.enum(["VALIDATED", "SUCCESS", "PARTIAL_SUCCESS", "NOT_FOUND", "ERROR"]),
-  validatedBy: z.string().nullable().optional()
+  validatedBy: z.string().nullable().optional(),
+  comments: z.string().optional().default(""),
+  salesforce: z.object({
+    contactHourId: z.string(),
+    created: z.boolean(),
+    error: z.string().optional()
+  }).optional()
 });
 
 /**
@@ -249,7 +255,13 @@ function generateOpenApiSpec() {
             teachingLocation: "Main Hall 105",
             term: "Fall 2023",
             status: "SUCCESS",
-            validatedBy: null
+            validatedBy: null,
+            comments: "Office hours are by appointment only",
+            salesforce: {
+              contactHourId: "a0x1234567890ABC",
+              created: true,
+              error: null
+            }
           }
         },
         OfficeHoursStatus: {
@@ -267,6 +279,10 @@ function generateOpenApiSpec() {
       {
         name: 'SQS',
         description: 'API endpoints for processing SQS messages',
+      },
+      {
+        name: 'Email',
+        description: 'API endpoints for email processing and webhooks',
       },
     ],
     paths: {
@@ -420,6 +436,112 @@ function generateOpenApiSpec() {
                       },
                       details: {
                         type: 'string'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/api/email/inbound': {
+        post: {
+          summary: 'Process inbound email webhook',
+          description: 'Webhook endpoint for processing inbound emails from SendGrid. Extracts office hours information from email content.',
+          tags: ['Email'],
+          requestBody: {
+            required: true,
+            content: {
+              'multipart/form-data': {
+                schema: {
+                  type: 'object',
+                  description: 'SendGrid inbound parse webhook payload'
+                }
+              },
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  description: 'JSON payload from SendGrid webhook'
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Successful operation',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: {
+                        type: 'boolean',
+                        example: true
+                      },
+                      message: {
+                        type: 'string',
+                        example: 'Email processed successfully'
+                      },
+                      result: {
+                        $ref: '#/components/schemas/ProcessedOfficeHours'
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '415': {
+              description: 'Unsupported content type',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      error: {
+                        type: 'string',
+                        example: 'Unsupported content type. Expected multipart/form-data or application/json'
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '500': {
+              description: 'Server error',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      error: {
+                        type: 'string'
+                      },
+                      details: {
+                        type: 'string'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        get: {
+          summary: 'Verify webhook endpoint',
+          description: 'GET endpoint to verify the webhook is active and accessible.',
+          tags: ['Email'],
+          responses: {
+            '200': {
+              description: 'Webhook endpoint is active',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      message: {
+                        type: 'string',
+                        example: 'SendGrid Inbound Parse webhook endpoint is active'
                       }
                     }
                   }
