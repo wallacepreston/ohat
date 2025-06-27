@@ -47,7 +47,7 @@ async function sendTemplateEmail(to, templateId, dynamicData) {
     
     const msg = {
       to: actualRecipient,
-      from: process.env.SENDGRID_FROM_EMAIL || 'instructors@mheducation.com',
+      from: process.env.SENDGRID_FROM_EMAIL || 'instructors@example.com',
       templateId,
       dynamicTemplateData: enhancedData,
     };
@@ -81,7 +81,7 @@ async function sendInstructorEmail(email, instructorName, contactId, institution
     contact_id: contactId,
     institution: institution,
     current_date: new Date().toLocaleDateString(),
-    support_email: process.env.SUPPORT_EMAIL || 'instructors@mheducation.com',
+    support_email: process.env.SUPPORT_EMAIL || 'instructors@example.com',
     salesperson_name: 'Chuck Page-Turner'
   };
   

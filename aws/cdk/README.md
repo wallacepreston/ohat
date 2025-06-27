@@ -23,12 +23,12 @@ This CDK project sets up an AWS Lambda function that is triggered by new SQS mes
    ```bash
    EMAIL_QUEUE_URL=https://sqs.your-region.amazonaws.com/your-account-id/your-queue-name
    SENDGRID_API_KEY=your-sendgrid-api-key
-   SENDGRID_FROM_EMAIL=instructors@mheducation.com
+   SENDGRID_FROM_EMAIL=instructors@example.com
    SENDGRID_INSTRUCTOR_REQUEST_TEMPLATE_ID=d-your-template-id
    SENDGRID_SEND_EMAILS_ENABLED=true
    SENDGRID_SEND_REAL_EMAILS=false
    SENDGRID_TO_EMAIL=test@example.com
-   SUPPORT_EMAIL=instructors@mheducation.com
+   SUPPORT_EMAIL=instructors@example.com
    ```
 
    Note: If you don't provide an `EMAIL_QUEUE_URL`, a new SQS queue will be created.
