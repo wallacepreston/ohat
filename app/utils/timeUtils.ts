@@ -268,7 +268,7 @@ export function convertToTimeSlots(
     const orderedDays = orderDaysOfWeek(days);
     
     // Simple case: if we have explicit days and one time period
-    if (orderedDays.length > 0 && !timeString.includes(',')) {
+    if (orderedDays.length > 0 && !timeString.includes(',') && !timeString.includes(';')) {
       // Parse the time string (e.g., "2-4pm" or "14:00-16:00")
       const result = parseTimeString(timeString);
       
@@ -292,7 +292,7 @@ export function convertToTimeSlots(
     }
     
     // More complex case: try to parse from the time string itself
-    // This would handle entries like "Monday 2-4pm, Wednesday 3-5pm"
+    // This would handle entries like "Monday 2-4pm, Wednesday 3-5pm" or "Monday: 2:00 PM - 4:00 PM; Tuesday: 2:00 PM - 4:00 PM"
     const slots: TimeSlot[] = [];
     
     // Split by commas or semicolons to get different time slots
@@ -303,7 +303,8 @@ export function convertToTimeSlots(
       const dayMatch = segment.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i);
       if (dayMatch) {
         const day = dayMatch[1];
-        const timeSegmentWithoutDay = segment.substring(day.length).trim();
+        // Remove the day and any following colon/whitespace
+        const timeSegmentWithoutDay = segment.substring(day.length).replace(/^[:.\s]+/, '').trim();
         const parsedTime = parseTimeString(timeSegmentWithoutDay);
         
         if (parsedTime.success && parsedTime.timeSlot) {

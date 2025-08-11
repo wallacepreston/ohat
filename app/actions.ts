@@ -399,12 +399,13 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
               throw new Error("Contact ID not found in Salesforce data")
             }
             
+            const formattedResult = salesforceService.formatContactHourResult({
+              ...result,
+              contactId: contactIdToUse,
+              status: result.status
+            });
+
             try {
-              const formattedResult = salesforceService.formatContactHourResult({
-                ...result,
-                contactId: contactIdToUse,
-                status: result.status
-              });
               const contactHourId = await salesforceService.createContactHour(contactIdToUse, formattedResult);
               console.log(`Created Contact Hour record for Contact ID: ${contactIdToUse}`);
               resultsToReturn.push({
@@ -423,7 +424,7 @@ export async function processOfficeHours(formData: FormData): Promise<ProcessedO
               console.error(`Failed to create Contact Hour record for Contact ID: ${contactIdToUse}:`, error);
               
               resultsToReturn.push({
-                ...result,
+                ...formattedResult,
                 // Add error information to the result
                 salesforce: {
                   contactHourId: "",
